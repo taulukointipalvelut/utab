@@ -95,13 +95,13 @@ class Lattice:
 		#self.personal_conflict = False
 
 	def __eq__(self, other):
-		if set(self.grid.teams) == set(other.grid.teams) and self.chair == other.chair:
+		if self.grid.teams == other.grid.teams and self.chair == other.chair:
 			return True
 		else:
 			return False
 
 	def __ne__(self, other):
-		if set(self.grid.teams) != set(other.grid.teams) or self.chair != other.chair:
+		if self.grid.teams != other.grid.teams or self.chair != other.chair:
 			return True
 		else:
 			return False
@@ -179,13 +179,13 @@ class Grid:
 		self.bubble = 10
 
 	def __eq__(self, other):
-		if set(self.teams) == set(other.teams):
+		if self.teams == other.teams:
 			return True
 		else:
 			return False
 
 	def __ne__(self, other):
-		if set(self.teams) != set(other.teams):
+		if self.teams != other.teams:
 			return True
 		else:
 			return False
@@ -207,6 +207,7 @@ class Grid_list_info:
 		self.adopt_indicator2 = None
 		self.same_institution_indicator = None
 		self.num_of_warnings = None
+		self.scatter_indicator = None
 		self.matchups_no = None
 		self.large_warnings = []
 

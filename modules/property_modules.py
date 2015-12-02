@@ -2,6 +2,27 @@
 import math
 import itertools
 
+def calc_scatter_indicator(grid_list):
+	institutions = []
+	for grid in grid_list:
+		for team in grid.teams:
+			institutions += team.institutions
+	institutions = list(set(institutions))
+	institutions_by_institutions = []
+	for institution in institutions:
+		institutions_by_institution = []
+		for grid in grid_list:
+			for team in grid.teams:
+				if institution in team.institutions:#if the team insti == insti
+					for team2 in grid.teams:
+						if team2 != team:
+							institutions_by_institution.extend(team2.institutions)
+
+		institutions_by_institutions.append(list(set(institutions_by_institution)))
+
+	institutions_by_institutions = [flatten for inner in institutions_by_institutions for flatten in inner]
+	return len(institutions_by_institutions)/float(len(institutions))
+
 def calc_power_pairing_indicator(grid_list):
 	if len(grid_list[0].teams) == 2:
 		power_pairing_indicator = 0
@@ -28,7 +49,6 @@ def calc_same_institution_indicator(grid_list):
 			institutions.extend(list(set(team_pair[0].institutions) & set(team_pair[1].institutions)))
 		if len(institutions) != 0:
 			insti_indi += len(institutions)
-			print institutions
 	return float(insti_indi)/len(grid_list)*100
 
 def calc_adopt_indicator(grid_list):

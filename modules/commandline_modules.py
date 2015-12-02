@@ -19,7 +19,8 @@ def show_matchups_by_grid(grid_list_with_info_origin, round_num):
 		#print "matchups for round:", round_num
 		if round_num > 1: print "power pairing indicator: %.2f(the smaller, the better; min = 1)" % (grid_list_with_info[1].power_pairing_indicator)
 		print "adopt indicator: %.2f (sd: %.2f, ot: %.2f) (the larger, the better; min = 0)" % (grid_list_with_info[1].adopt_indicator, grid_list_with_info[1].adopt_indicator_sd, grid_list_with_info[1].adopt_indicator2)
-		print "same institution indicator: %.2f(the smaller, the better; min = 0)" % (grid_list_with_info[1].same_institution_indicator)
+		#print "same institution indicator: %.2f(the smaller, the better; min = 0)" % (grid_list_with_info[1].same_institution_indicator)
+		print "scattered institutions indicator: %.2f(the larger, the better; min = 1)" % (grid_list_with_info[1].scatter_indicator)
 		print "number of warnings: %4d" % grid_list_with_info[1].num_of_warnings
 		print "------------------------------------warnings----------------------------------------"
 		for large_warning in grid_list_with_info[1].large_warnings:
