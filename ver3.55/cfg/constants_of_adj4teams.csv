@@ -1,0 +1,12 @@
+,Round 1,Round 2,Round 3,Round 4
+random allocation?,2,0,0,0
+Desirable?strong adj to strong rnd,0,2,2,2
+Desirable?with fair times(possible),0,3,3,3
+Desirable?avoid conflicts,1,1,1,1
+Desirable?avoid past watched team,0,4,4,4
+Desirable?prioritize bubble round,0,0,0,0
+Desirable?chair-fair-times,0,0,0,0
+,1st time,2nd time,3rd time,4th time
+"How much is judge test important?[0, 100]",60,0,0,0
+"How much is judge reputation important?[0, 100]",40,30,0,0
+"How much is round performance important?[0, 100]",0,70,100,100
