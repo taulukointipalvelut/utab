@@ -190,6 +190,9 @@ def return_selected_lattice_lists(lattice_list, round_num, team_list, adjudicato
 		selected_lattice_lists.append(alg(lattice_list, round_num, team_list))
 	print
 
+	for selected_lattice_list in selected_lattice_lists:
+		selected_lattice_list.sort(key=lambda lattice: lattice.__hash__())
+
 	selected_lattice_lists2 = []
 	for selected_lattice_list in selected_lattice_lists:
 		if selected_lattice_list not in selected_lattice_lists2:
@@ -276,6 +279,16 @@ def find_grid_from_grid_list(grid_list, teams):
 		if grid.teams == teams:
 			return grid
 
+def multi(selected_grid_list, selected_grid_lists2):
+	for selected_grid_list2 in selected_grid_lists2:
+		same = True
+		for grid_pair in zip(selected_grid_list, selected_grid_list2):
+			if grid_pair[0] != grid_pair[1]:
+				same = False
+				break
+		if same: return True
+	return False
+
 def return_selected_grid_lists(grid_list, round_num, team_list):
 	selected_grid_lists_with_info = []
 	alg_list = [select_alg2, select_alg3, select_alg4, select_alg11, select_alg13, select_alg14]
@@ -329,8 +342,9 @@ def return_selected_grid_lists(grid_list, round_num, team_list):
 	print
 	selected_grid_lists2 = []
 	for selected_grid_list in selected_grid_lists:
-		if (selected_grid_list not in selected_grid_lists2) and (selected_grid_list != None):
-			selected_grid_lists2.append(selected_grid_list)
+		if selected_grid_list != None:
+			if not multi(selected_grid_list, selected_grid_lists2):
+				selected_grid_lists2.append(selected_grid_list)
 
 	selected_grid_lists3 = []
 	#print [[[t.name for t in g.teams] for g in gl] for gl in selected_grid_lists2]
@@ -366,12 +380,19 @@ def return_selected_grid_lists(grid_list, round_num, team_list):
 				new_selected_grid_list.append(new_grid)
 			selected_grid_lists3.append(new_selected_grid_list)
 
+	for selected_grid_list3 in selected_grid_lists3:
+		selected_grid_list3.sort(key=lambda grid: grid.__hash__())
+
 	if len(grid_list[0].teams) == 2:
 		selected_grid_lists4 = copy.copy(selected_grid_lists3)
 		for selected_grid_list in selected_grid_lists3:
-			selected_grid_lists4.append(revise_selected_grid_list(selected_grid_list, grid_list))
+			revised_selected_grid_list = revise_selected_grid_list(selected_grid_list, grid_list)
+			if multi(revised_selected_grid_list, selected_grid_lists4):
+				selected_grid_lists4.append(revised_selected_grid_list)
 	else:
+		"""
 		selected_grid_lists4 = copy.copy(selected_grid_lists3)
+		"""
 
 
 	for selected_grid_list in selected_grid_lists4:
@@ -437,6 +458,7 @@ def return_grid_list_info(selected_grid_list, team_list, round_num):
 	selected_grid_list_info.same_institution_indicator = calc_same_institution_indicator(selected_grid_list)
 	selected_grid_list_info.adopt_indicator, selected_grid_list_info.adopt_indicator_sd, selected_grid_list_info.adopt_indicator2 = calc_adopt_indicator(selected_grid_list)
 	selected_grid_list_info.num_of_warnings = calc_num_of_warnings(selected_grid_list)
+	selected_grid_list_info.scatter_indicator = calc_scatter_indicator(selected_grid_list)
 
 	return selected_grid_list_info
 

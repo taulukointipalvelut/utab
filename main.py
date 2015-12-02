@@ -1114,12 +1114,13 @@ def prompt_beginning(team_list, venue_list, adjudicator_list, filter_lists, filt
 			continue
 		break
 
-backup_data()
-#show_logo_random_fade()
-#show_logo_star()
-team_list, venue_list, adjudicator_list, filter_lists, filter_of_adj_lists, constants, constants_of_adj = preparation(FILENAME_TEAMS, FILENAME_VENUES, FILENAME_ADJUDICATORS, FILENAME_SETTINGS, FILENAME_SETTINGS_OF_ADJ)
-initial_check(team_list, venue_list, adjudicator_list, filter_lists, filter_of_adj_lists, constants, constants_of_adj, TEAMNUM2)
+if __name__ == "__main__":
+	backup_data()
+	#show_logo_random_fade()
+	#show_logo_star()
+	team_list, venue_list, adjudicator_list, filter_lists, filter_of_adj_lists, constants, constants_of_adj = preparation(FILENAME_TEAMS, FILENAME_VENUES, FILENAME_ADJUDICATORS, FILENAME_SETTINGS, FILENAME_SETTINGS_OF_ADJ)
+	initial_check(team_list, venue_list, adjudicator_list, filter_lists, filter_of_adj_lists, constants, constants_of_adj, TEAMNUM2)
 
-prompt_beginning(team_list, venue_list, adjudicator_list, filter_lists, filter_of_adj_lists, constants, constants_of_adj, ROUND_NUM, FILENAME_TEAMS, FILENAME_VENUES, FILENAME_ADJUDICATORS, DEBATER_NUM_PER_TEAM, TEAMNUM2)
+	prompt_beginning(team_list, venue_list, adjudicator_list, filter_lists, filter_of_adj_lists, constants, constants_of_adj, ROUND_NUM, FILENAME_TEAMS, FILENAME_VENUES, FILENAME_ADJUDICATORS, DEBATER_NUM_PER_TEAM, TEAMNUM2)
 
 pass
