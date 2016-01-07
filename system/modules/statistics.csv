@@ -1,0 +1,93 @@
+""
+round 1
+--t test--
+t value: -0.16
+p value: 0.87
+no meaningful difference(10%  rejection)
+--wins analysis--
+"real win-point exist in [0.20 ,0.61] by 95%, 0.41+-0.10"
+--gini index--
+0.009
+""
+round 2
+--t test--
+t value: -1.14
+p value: 0.27
+no meaningful difference(10%  rejection)
+--wins analysis--
+"real win-point exist in [0.12 ,0.51] by 95%, 0.32+-0.10"
+--gini index--
+0.008
+""
+round 3
+--t test--
+t value: 1.53
+p value: 0.14
+no meaningful difference(10%  rejection)
+--wins analysis--
+"real win-point exist in [0.16 ,0.56] by 95%, 0.36+-0.10"
+--gini index--
+0.009
+""
+round 4
+--t test--
+t value: 1.10
+p value: 0.28
+no meaningful difference(10%  rejection)
+--wins analysis--
+"real win-point exist in [0.29 ,0.71] by 95%, 0.50+-0.11"
+--gini index--
+0.008
+""
+overall
+--t test--
+t value: 0.51
+p value: 0.61
+no meaningful difference(10%  rejection)
+--wins analysis--
+"real win-point exist in [0.30 ,0.50] by 95%, 0.40+-0.05"
+""
+"Osaka A's            real points exist in [219.96 ,228.04] by 95%, 224.00+-2.06"
+"Osaka B's            real points exist in [223.36 ,229.14] by 95%, 226.25+-1.47"
+"Osaka C's            real points exist in [221.28 ,227.22] by 95%, 224.25+-1.52"
+"GUDS's               real points exist in [222.13 ,226.37] by 95%, 224.25+-1.08"
+"TUS A's              real points exist in [223.72 ,228.78] by 95%, 226.25+-1.29"
+"TUS B's              real points exist in [226.01 ,226.99] by 95%, 226.50+-0.25"
+"Seikei B's           real points exist in [221.20 ,227.30] by 95%, 224.25+-1.56"
+"Hit-U C's            real points exist in [223.83 ,230.67] by 95%, 227.25+-1.75"
+"Seikei A's           real points exist in [224.03 ,226.97] by 95%, 225.50+-0.75"
+"Hit-U D's            real points exist in [220.22 ,225.28] by 95%, 222.75+-1.29"
+"WAD E's              real points exist in [223.82 ,230.18] by 95%, 227.00+-1.62"
+"WAD D's              real points exist in [222.05 ,226.95] by 95%, 224.50+-1.25"
+"Kyoto A's            real points exist in [222.55 ,228.95] by 95%, 225.75+-1.63"
+"WAD A's              real points exist in [220.87 ,224.63] by 95%, 222.75+-0.96"
+"Takushoku A's        real points exist in [222.13 ,226.37] by 95%, 224.25+-1.08"
+"WAD C's              real points exist in [222.17 ,225.83] by 95%, 224.00+-0.94"
+"Sophia A's           real points exist in [222.13 ,230.37] by 95%, 226.25+-2.10"
+"Sophia B's           real points exist in [223.25 ,231.25] by 95%, 227.25+-2.04"
+"Sophia C's           real points exist in [224.60 ,230.40] by 95%, 227.50+-1.48"
+"KU D's               real points exist in [224.25 ,228.75] by 95%, 226.50+-1.15"
+"Sophia E's           real points exist in [221.60 ,226.40] by 95%, 224.00+-1.22"
+"NIT A's              real points exist in [222.63 ,226.87] by 95%, 224.75+-1.08"
+"SHESS B's            real points exist in [220.86 ,226.14] by 95%, 223.50+-1.35"
+"Seikei C's           real points exist in [221.24 ,230.26] by 95%, 225.75+-2.30"
+"Nagoya B's           real points exist in [223.05 ,229.45] by 95%, 226.25+-1.63"
+"KU B's               real points exist in [220.38 ,230.12] by 95%, 225.25+-2.48"
+"KCUFS B's            real points exist in [221.78 ,227.72] by 95%, 224.75+-1.52"
+"ICU A's              real points exist in [225.37 ,229.13] by 95%, 227.25+-0.96"
+"ICU B's              real points exist in [222.64 ,225.86] by 95%, 224.25+-0.82"
+"ICU C's              real points exist in [221.54 ,228.46] by 95%, 225.00+-1.77"
+"ICU D's              real points exist in [222.62 ,227.88] by 95%, 225.25+-1.34"
+"ICU E's              real points exist in [223.22 ,228.28] by 95%, 225.75+-1.29"
+"ICU F's              real points exist in [225.81 ,230.69] by 95%, 228.25+-1.24"
+"Titech B's           real points exist in [223.21 ,229.79] by 95%, 226.50+-1.68"
+"KU C's               real points exist in [219.02 ,226.98] by 95%, 223.00+-2.03"
+"Tsuda A's            real points exist in [224.02 ,228.48] by 95%, 226.25+-1.14"
+"Tokyo D's            real points exist in [224.45 ,230.05] by 95%, 227.25+-1.43"
+"Tokyo G's            real points exist in [220.87 ,228.63] by 95%, 224.75+-1.98"
+"Tokyo F's            real points exist in [222.97 ,229.53] by 95%, 226.25+-1.67"
+"Kyoto B's            real points exist in [218.98 ,225.02] by 95%, 222.00+-1.54"
+"KDS A's              real points exist in [221.74 ,225.76] by 95%, 223.75+-1.02"
+"KDS B's              real points exist in [220.62 ,225.88] by 95%, 223.25+-1.34"
+"KDS E's              real points exist in [223.48 ,226.02] by 95%, 224.75+-0.65"
+"KDS D's              real points exist in [218.81 ,223.69] by 95%, 221.25+-1.24"
