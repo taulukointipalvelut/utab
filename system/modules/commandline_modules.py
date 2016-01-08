@@ -3,6 +3,7 @@ import sys
 import copy
 from .property_modules import *
 from .bit_modules import *
+from . import interaction_modules
 import time
 import random
 try:
@@ -15,19 +16,19 @@ def show_matchups_by_grid(grid_list_with_info_origin, round_num):
 		grid_list_with_info = [copy.copy(grid_list_with_info_origin[0]), grid_list_with_info_origin[1]]
 		grid_list_with_info[0].sort(key=lambda grid: grid.teams[0].ranking+grid.teams[1].ranking)
 		b_codes = ['93', '92', '96', '94', '97', '93', '92', '96', '94', '97', '93', '92', '96', '94', '97']
-		print("---------------------------------matchups No." +str(grid_list_with_info[1].matchups_no)+ "-------------------------------------")
+		interaction_modules.commandline("---------------------------------matchups No." +str(grid_list_with_info[1].matchups_no)+ "-------------------------------------")
 		#print "matchups for round:", round_num
-		if grid_list_with_info[1].comment != "" : print("Note: "+str(grid_list_with_info[1].comment))
-		if round_num > 1: print("power pairing indicator: %.2f(the smaller, the better; min = 1)" % (grid_list_with_info[1].power_pairing_indicator))
-		print("adopt indicator: %.2f (sd: %.2f, ot: %.2f) (the larger, the better; min = 0)" % (grid_list_with_info[1].adopt_indicator, grid_list_with_info[1].adopt_indicator_sd, grid_list_with_info[1].adopt_indicator2))
+		if grid_list_with_info[1].comment != "" : interaction_modules.commandline("Note: "+str(grid_list_with_info[1].comment))
+		if round_num > 1: interaction_modules.commandline("power pairing indicator: %.2f(the smaller, the better; min = 1)" % (grid_list_with_info[1].power_pairing_indicator))
+		interaction_modules.commandline("adopt indicator: %.2f (sd: %.2f, ot: %.2f) (the larger, the better; min = 0)" % (grid_list_with_info[1].adopt_indicator, grid_list_with_info[1].adopt_indicator_sd, grid_list_with_info[1].adopt_indicator2))
 		#print "same institution indicator: %.2f(the smaller, the better; min = 0)" % (grid_list_with_info[1].same_institution_indicator)
-		print("scattered institutions indicator: %.2f(the larger, the better; min = 1)" % (grid_list_with_info[1].scatter_indicator))
-		print("number of warnings: %4d" % grid_list_with_info[1].num_of_warnings)
-		print("------------------------------------warnings----------------------------------------")
+		interaction_modules.commandline("scattered institutions indicator: %.2f(the larger, the better; min = 1)" % (grid_list_with_info[1].scatter_indicator))
+		interaction_modules.commandline("number of warnings: %4d" % grid_list_with_info[1].num_of_warnings)
+		interaction_modules.commandline("------------------------------------warnings----------------------------------------")
 		for large_warning in grid_list_with_info[1].large_warnings:
-			print(large_warning)
-		print("------------------------------------matchups----------------------------------------")
-		print("\033[33m             Gov     :     Opp     \033[0m")
+			interaction_modules.commandline(large_warning)
+		interaction_modules.commandline("------------------------------------matchups----------------------------------------")
+		interaction_modules.commandline("\033[33m             Gov     :     Opp     \033[0m")
 		for grid in grid_list_with_info[0]:
 			if is_one_sided(grid.teams[0], "gov", 2) != 0:
 				text_1 = '\033['+b_codes[sum(grid.teams[0].wins)]+';41m'+"{0:20.20s}".format(grid.teams[0].name)+'\033[0m'
@@ -46,26 +47,25 @@ def show_matchups_by_grid(grid_list_with_info_origin, round_num):
 
 			line = text_1+" : "+text_2+" |"
 			for warning in grid.warnings:
-				warning += ","
-				line = line + '\033[31m'+warning+'\033[0m'
-			print(line)
+				line = line + ' \033[31m'+str(warning)+'\033[0m'
+			interaction_modules.commandline(line)
 	else:
 		grid_list_with_info = [copy.copy(grid_list_with_info_origin[0]), grid_list_with_info_origin[1]]
 		grid_list_with_info[0].sort(key=lambda grid: grid.teams[0].ranking+grid.teams[1].ranking+grid.teams[2].ranking+grid.teams[3].ranking)
 		b_codes = ['93', '92', '96', '94', '97', '93', '92', '96', '94', '97', '93', '92', '96', '94', '97']
-		print("---------------------------------matchups No." +str(grid_list_with_info[1].matchups_no)+ "-------------------------------------")
+		interaction_modules.commandline("---------------------------------matchups No." +str(grid_list_with_info[1].matchups_no)+ "-------------------------------------")
 		#print "matchups for round:", round_num
-		if grid_list_with_info[1].comment != "" : print("Note: "+str(grid_list_with_info[1].comment))
-		if round_num > 1: print("power pairing indicator: %.2f(the smaller, the better; min = 1)" % (grid_list_with_info[1].power_pairing_indicator))
-		print("adopt indicator: %.2f (sd: %.2f, ot: %.2f) (the larger, the better; min = 0)" % (grid_list_with_info[1].adopt_indicator, grid_list_with_info[1].adopt_indicator_sd, grid_list_with_info[1].adopt_indicator2))
-		print("same institution indicator: %.2f(the smaller, the better; min = 0)" % (grid_list_with_info[1].same_institution_indicator))
-		print("number of warnings: %4d" % grid_list_with_info[1].num_of_warnings)
-		print("------------------------------------warnings----------------------------------------")
+		if grid_list_with_info[1].comment != "" : interaction_modules.commandline("Note: "+str(grid_list_with_info[1].comment))
+		if round_num > 1: interaction_modules.commandline("power pairing indicator: %.2f(the smaller, the better; min = 1)" % (grid_list_with_info[1].power_pairing_indicator))
+		interaction_modules.commandline("adopt indicator: %.2f (sd: %.2f, ot: %.2f) (the larger, the better; min = 0)" % (grid_list_with_info[1].adopt_indicator, grid_list_with_info[1].adopt_indicator_sd, grid_list_with_info[1].adopt_indicator2))
+		interaction_modules.commandline("same institution indicator: %.2f(the smaller, the better; min = 0)" % (grid_list_with_info[1].same_institution_indicator))
+		interaction_modules.commandline("number of warnings: %4d" % grid_list_with_info[1].num_of_warnings)
+		interaction_modules.commandline("------------------------------------warnings----------------------------------------")
 		for large_warning in grid_list_with_info[1].large_warnings:
-			print(large_warning)
-		print("------------------------------------matchups----------------------------------------")
-		print("\033[33m             Gov     :     Opp     \033[0m")
-		print("---------------------------------------------")
+			interaction_modules.commandline(large_warning)
+		interaction_modules.commandline("------------------------------------matchups----------------------------------------")
+		interaction_modules.commandline("\033[33m             Gov     :     Opp     \033[0m")
+		interaction_modules.commandline("---------------------------------------------")
 		wins = [sum(team.wins) for grid in grid_list_with_info[0] for team in grid.teams]
 		wins.sort()#reverse=True
 		for grid in grid_list_with_info[0]:#0123: 0123, 456: 0123, 456, 789 #012,3: 012,345,6 /3+1
@@ -127,26 +127,25 @@ def show_matchups_by_grid(grid_list_with_info_origin, round_num):
 			line1 = text_1+" : "+text_2+" |"
 			line2 = text_3+" : "+text_4+" |"
 			for warning in grid.warnings:
-				warning += ","
-				line2 += "\033[31m"+warning+"\033[0m"
-			print(line1)
-			print(line2)
-			print("---------------------------------------------")
+				line2 += " \033[31m"+str(warnin)+"\033[0m"
+			interaction_modules.commandline(line1)
+			interaction_modules.commandline(line2)
+			interaction_modules.commandline("---------------------------------------------")
 
 def show_matchups_by_lattice(selected_lattice_list_with_info_origin, round_num, constants_of_adj):
 	if len(selected_lattice_list_with_info_origin[0][0].grid.teams) == 2:
 		selected_lattice_list_with_info = [copy.copy(selected_lattice_list_with_info_origin[0]), selected_lattice_list_with_info_origin[1]]
 		selected_lattice_list_with_info[0].sort(key=lambda lattice: (lattice.grid.teams[0].ranking+lattice.grid.teams[1].ranking)/2.0+lattice.chair.ranking)
 		b_codes = ['94', '96', '92', '93']
-		print("---------------------------------allocation No." +str(selected_lattice_list_with_info[1].allocation_no)+ "------------------------------------")
+		interaction_modules.commandline("---------------------------------allocation No." +str(selected_lattice_list_with_info[1].allocation_no)+ "------------------------------------")
 		#print "matchups for round:", round_num
-		if selected_lattice_list_with_info[1].comment != "" : print("Note: "+str(selected_lattice_list_with_info[1].comment))
-		if round_num > 1: print("power allocation indicator: %.2f(the smaller, the better; min = 0)" % (selected_lattice_list_with_info[1].strong_strong_indicator))
-		print("------------------------------------warnings----------------------------------------")
+		if selected_lattice_list_with_info[1].comment != "" : interaction_modules.commandline("Note: "+str(selected_lattice_list_with_info[1].comment))
+		if round_num > 1: interaction_modules.commandline("power allocation indicator: %.2f(the smaller, the better; min = 0)" % (selected_lattice_list_with_info[1].strong_strong_indicator))
+		interaction_modules.commandline("------------------------------------warnings----------------------------------------")
 		for large_warning in selected_lattice_list_with_info[1].large_warnings:
-			print(large_warning)
-		print("------------------------------------matchups----------------------------------------")
-		print("\033[33m             Gov     :     Opp     \033[0m")
+			interaction_modules.commandline(large_warning)
+		interaction_modules.commandline("------------------------------------matchups----------------------------------------")
+		interaction_modules.commandline("\033[33m             Gov     :     Opp     \033[0m")
 
 		chair_list = [lattice.chair for lattice in selected_lattice_list_with_info[0]]
 		grid_list = [lattice.grid for lattice in selected_lattice_list_with_info[0]]
@@ -193,22 +192,22 @@ def show_matchups_by_lattice(selected_lattice_list_with_info_origin, round_num, 
 			for warning in lattice.warnings:
 				warning += ","
 				line = line + "\033[31m"+warning+"\033[0m"
-			print(line)
-		print()
+			interaction_modules.commandline(line)
+		interaction_modules.commandline("")
 	else:
 		selected_lattice_list_with_info = [copy.copy(selected_lattice_list_with_info_origin[0]), selected_lattice_list_with_info_origin[1]]
 		selected_lattice_list_with_info[0].sort(key=lambda lattice: (lattice.grid.teams[0].ranking+lattice.grid.teams[1].ranking)/2.0+lattice.chair.ranking)
 		b_codes = ['94', '96', '92', '93']
-		print("---------------------------------allocation No." +str(selected_lattice_list_with_info[1].allocation_no)+ "------------------------------------")
+		interaction_modules.commandline("---------------------------------allocation No." +str(selected_lattice_list_with_info[1].allocation_no)+ "------------------------------------")
 		#print "matchups for round:", round_num
-		if selected_lattice_list_with_info[1].comment != "" : print("Note: "+str(selected_lattice_list_with_info[1].comment))
-		if round_num > 1: print("power allocation indicator: %.2f(the smaller, the better; min = 0)" % (selected_lattice_list_with_info[1].strong_strong_indicator))
-		print("------------------------------------warnings----------------------------------------")
+		if selected_lattice_list_with_info[1].comment != "" : interaction_modules.commandline("Note: "+str(selected_lattice_list_with_info[1].comment))
+		if round_num > 1: interaction_modules.commandline("power allocation indicator: %.2f(the smaller, the better; min = 0)" % (selected_lattice_list_with_info[1].strong_strong_indicator))
+		interaction_modules.commandline("------------------------------------warnings----------------------------------------")
 		for large_warning in selected_lattice_list_with_info[1].large_warnings:
-			print(large_warning)
-		print("------------------------------------matchups----------------------------------------")
-		print("\033[33m             Gov     :     Opp     \033[0m")
-		print("--------------------------------------------")
+			interaction_modules.commandline(large_warning)
+		interaction_modules.commandline("------------------------------------matchups----------------------------------------")
+		interaction_modules.commandline("\033[33m             Gov     :     Opp     \033[0m")
+		interaction_modules.commandline("--------------------------------------------")
 
 		chair_list = [lattice.chair for lattice in selected_lattice_list_with_info[0]]
 		grid_list = [lattice.grid for lattice in selected_lattice_list_with_info[0]]
@@ -259,10 +258,10 @@ def show_matchups_by_lattice(selected_lattice_list_with_info_origin, round_num, 
 			for warning in lattice.warnings:
 				warning += ","
 				line2 = line2 + "\033[31m"+warning+"\033[0m"
-			print(line1)
-			print(line2)
-			print("--------------------------------------------")
-		print()
+			interaction_modules.commandline(line1)
+			interaction_modules.commandline(line2)
+			interaction_modules.commandline("--------------------------------------------")
+		interaction_modules.commandline("")
 
 def check_matchups_only_for_venues(lattice_list, venue_list):
 	large_warnings = []
@@ -285,101 +284,101 @@ def check_matchups_only_for_venues(lattice_list, venue_list):
 
 def show_matchups_by_venue(allocations, venue_list, round_num):
 	if len(allocations[0].grid.teams) == 2:	
-		print("\033[1;35m"+"------------------------------------ venue -----------------------------------------"+"\033[0m")	
-		print("------------------------------------warnings----------------------------------------")
+		interaction_modules.commandline("\033[1;35m"+"------------------------------------ venue -----------------------------------------"+"\033[0m")	
+		interaction_modules.commandline("------------------------------------warnings----------------------------------------")
 		large_warnings = check_matchups_only_for_venues(allocations, venue_list)
 		for large_warning in large_warnings:
-			print(large_warning)
-		print("------------------------------matchups with venue-----------------------------------")
-		print("matchups with venues for round:", round_num)
-		print("\033[33m             Gov     :     Opp     \033[0m")
+			interaction_modules.commandline(large_warning)
+		interaction_modules.commandline("------------------------------matchups with venue-----------------------------------")
+		interaction_modules.commandline("matchups with venues for round:", round_num)
+		interaction_modules.commandline("\033[33m             Gov     :     Opp     \033[0m")
 		for lattice in allocations:
 			if len(lattice.panel) == 2:
-				print("%20.20s : %-20.20s |chair : %-20.20s(panel : %-20.20s, %-20.20s)|venue : %-10.10s" % (lattice.grid.teams[0].name, lattice.grid.teams[1].name, lattice.chair.name, lattice.panel[0].name, lattice.panel[1].name, lattice.venue.name))
+				interaction_modules.commandline("%20.20s : %-20.20s |chair : %-20.20s(panel : %-20.20s, %-20.20s)|venue : %-10.10s" % (lattice.grid.teams[0].name, lattice.grid.teams[1].name, lattice.chair.name, lattice.panel[0].name, lattice.panel[1].name, lattice.venue.name))
 			elif len(lattice.panel) == 1:
-				print("%20.20s : %-20.20s |chair : %-20.20s(panel : %-20.20s, %-20.20s)|venue : %-10.10s" % (lattice.grid.teams[0].name, lattice.grid.teams[1].name, lattice.chair.name, lattice.panel[0].name, "", lattice.venue.name))
+				interaction_modules.commandline("%20.20s : %-20.20s |chair : %-20.20s(panel : %-20.20s, %-20.20s)|venue : %-10.10s" % (lattice.grid.teams[0].name, lattice.grid.teams[1].name, lattice.chair.name, lattice.panel[0].name, "", lattice.venue.name))
 			else:
-				print("%20.20s : %-20.20s |chair : %-20.20s(panel : %-20.20s, %-20.20s)|venue : %-10.10s" % (lattice.grid.teams[0].name, lattice.grid.teams[1].name, lattice.chair.name, "", "", lattice.venue.name))
-		print()
+				interaction_modules.commandline("%20.20s : %-20.20s |chair : %-20.20s(panel : %-20.20s, %-20.20s)|venue : %-10.10s" % (lattice.grid.teams[0].name, lattice.grid.teams[1].name, lattice.chair.name, "", "", lattice.venue.name))
+		interaction_modules.commandline("")
 	else:
-		print("\033[1;35m"+"------------------------------------ venue -----------------------------------------"+"\033[0m")		
-		print("------------------------------------warnings----------------------------------------")
+		interaction_modules.commandline("\033[1;35m"+"------------------------------------ venue -----------------------------------------"+"\033[0m")		
+		interaction_modules.commandline("------------------------------------warnings----------------------------------------")
 		large_warnings = check_matchups_only_for_venues(allocations, venue_list)
 		for large_warning in large_warnings:
-			print(large_warning)
-		print("------------------------------matchups with venue-----------------------------------")
-		print("matchups with venues for round:", round_num)
-		print("\033[33m             Gov     :     Opp     \033[0m")
-		print("---------------------------------------------")
+			interaction_modules.commandline(large_warning)
+		interaction_modules.commandline("------------------------------matchups with venue-----------------------------------")
+		interaction_modules.commandline("matchups with venues for round:", round_num)
+		interaction_modules.commandline("\033[33m             Gov     :     Opp     \033[0m")
+		interaction_modules.commandline("---------------------------------------------")
 		for lattice in allocations:
 			if len(lattice.panel) == 2:
-				print("%20.20s : %-20.20s |chair : %-20.20s(panel : %-20.20s, %-20.20s)|venue : %-10.10s" % (lattice.grid.teams[0].name, lattice.grid.teams[1].name, lattice.chair.name, lattice.panel[0].name, lattice.panel[1].name, lattice.venue.name))
-				print("%20.20s : %-20.20s |" % (lattice.grid.teams[2].name, lattice.grid.teams[3].name))
-				print("---------------------------------------------")
+				interaction_modules.commandline("%20.20s : %-20.20s |chair : %-20.20s(panel : %-20.20s, %-20.20s)|venue : %-10.10s" % (lattice.grid.teams[0].name, lattice.grid.teams[1].name, lattice.chair.name, lattice.panel[0].name, lattice.panel[1].name, lattice.venue.name))
+				interaction_modules.commandline("%20.20s : %-20.20s |" % (lattice.grid.teams[2].name, lattice.grid.teams[3].name))
+				interaction_modules.commandline("---------------------------------------------")
 			elif len(lattice.panel) == 1:
-				print("%20.20s : %-20.20s |chair : %-20.20s(panel : %-20.20s, %-20.20s)|venue : %-10.10s" % (lattice.grid.teams[0].name, lattice.grid.teams[1].name, lattice.chair.name, lattice.panel[0].name, "", lattice.venue.name))
-				print("%20.20s : %-20.20s |" % (lattice.grid.teams[2].name, lattice.grid.teams[3].name))
-				print("---------------------------------------------")
+				interaction_modules.commandline("%20.20s : %-20.20s |chair : %-20.20s(panel : %-20.20s, %-20.20s)|venue : %-10.10s" % (lattice.grid.teams[0].name, lattice.grid.teams[1].name, lattice.chair.name, lattice.panel[0].name, "", lattice.venue.name))
+				interaction_modules.commandline("%20.20s : %-20.20s |" % (lattice.grid.teams[2].name, lattice.grid.teams[3].name))
+				interaction_modules.commandline("---------------------------------------------")
 			else:
-				print("%20.20s : %-20.20s |chair : %-20.20s(panel : %-20.20s, %-20.20s)|venue : %-10.10s" % (lattice.grid.teams[0].name, lattice.grid.teams[1].name, lattice.chair.name, "", "", lattice.venue.name))
-				print("%20.20s : %-20.20s |" % (lattice.grid.teams[2].name, lattice.grid.teams[3].name))
-				print("---------------------------------------------")
-		print()
+				interaction_modules.commandline("%20.20s : %-20.20s |chair : %-20.20s(panel : %-20.20s, %-20.20s)|venue : %-10.10s" % (lattice.grid.teams[0].name, lattice.grid.teams[1].name, lattice.chair.name, "", "", lattice.venue.name))
+				interaction_modules.commandline("%20.20s : %-20.20s |" % (lattice.grid.teams[2].name, lattice.grid.teams[3].name))
+				interaction_modules.commandline("---------------------------------------------")
+		interaction_modules.commandline("")
 
 def show_matchups(allocations, round_num):
 	if len(allocations[0][0].grid.teams) == 2:	
-		print("\033[1;35m"+"------------------------------- matchups for round"+str(round_num)+" ------------------------------------"+"\033[0m")	
-		print("\033[33m             Gov     :     Opp     \033[0m")
+		interaction_modules.commandline("\033[1;35m"+"------------------------------- matchups for round"+str(round_num)+" ------------------------------------"+"\033[0m")	
+		interaction_modules.commandline("\033[33m             Gov     :     Opp     \033[0m")
 		for lattice in allocations[0]:
 			if lattice.venue:
 				if len(lattice.panel) == 2:
-					print("%20.20s : %-20.20s | chair : %-20.20s(panel : %-20.20s, %-20.20s)| venue : %-10.10s" % (lattice.grid.teams[0].name, lattice.grid.teams[1].name, lattice.chair.name, lattice.panel[0].name, lattice.panel[1].name, lattice.venue.name))
+					interaction_modules.commandline("%20.20s : %-20.20s | chair : %-20.20s(panel : %-20.20s, %-20.20s)| venue : %-10.10s" % (lattice.grid.teams[0].name, lattice.grid.teams[1].name, lattice.chair.name, lattice.panel[0].name, lattice.panel[1].name, lattice.venue.name))
 				elif len(lattice.panel) == 1:
-					print("%20.20s : %-20.20s | chair : %-20.20s(panel : %-20.20s, %-20.20s)| venue : %-10.10s" % (lattice.grid.teams[0].name, lattice.grid.teams[1].name, lattice.chair.name, lattice.panel[0].name, "", lattice.venue.name))
+					interaction_modules.commandline("%20.20s : %-20.20s | chair : %-20.20s(panel : %-20.20s, %-20.20s)| venue : %-10.10s" % (lattice.grid.teams[0].name, lattice.grid.teams[1].name, lattice.chair.name, lattice.panel[0].name, "", lattice.venue.name))
 				else:
-					print("%20.20s : %-20.20s | chair : %-20.20s(panel : %-20.20s, %-20.20s)| venue : %-10.10s" % (lattice.grid.teams[0].name, lattice.grid.teams[1].name, lattice.chair.name, "", "", lattice.venue.name))
+					interaction_modules.commandline("%20.20s : %-20.20s | chair : %-20.20s(panel : %-20.20s, %-20.20s)| venue : %-10.10s" % (lattice.grid.teams[0].name, lattice.grid.teams[1].name, lattice.chair.name, "", "", lattice.venue.name))
 			else:
 				if len(lattice.panel) == 2:
-					print("%20.20s : %-20.20s | chair : %-20.20s(panel : %-20.20s, %-20.20s)| venue : %-10.10s" % (lattice.grid.teams[0].name, lattice.grid.teams[1].name, lattice.chair.name, lattice.panel[0].name, lattice.panel[1].name, ""))
+					interaction_modules.commandline("%20.20s : %-20.20s | chair : %-20.20s(panel : %-20.20s, %-20.20s)| venue : %-10.10s" % (lattice.grid.teams[0].name, lattice.grid.teams[1].name, lattice.chair.name, lattice.panel[0].name, lattice.panel[1].name, ""))
 				elif len(lattice.panel) == 1:
-					print("%20.20s : %-20.20s | chair : %-20.20s(panel : %-20.20s, %-20.20s)| venue : %-10.10s" % (lattice.grid.teams[0].name, lattice.grid.teams[1].name, lattice.chair.name, lattice.panel[0].name, "", ""))
+					interaction_modules.commandline("%20.20s : %-20.20s | chair : %-20.20s(panel : %-20.20s, %-20.20s)| venue : %-10.10s" % (lattice.grid.teams[0].name, lattice.grid.teams[1].name, lattice.chair.name, lattice.panel[0].name, "", ""))
 				else:
-					print("%20.20s : %-20.20s | chair : %-20.20s(panel : %-20.20s, %-20.20s)| venue : %-10.10s" % (lattice.grid.teams[0].name, lattice.grid.teams[1].name, lattice.chair.name, "", "", ""))
+					interaction_modules.commandline("%20.20s : %-20.20s | chair : %-20.20s(panel : %-20.20s, %-20.20s)| venue : %-10.10s" % (lattice.grid.teams[0].name, lattice.grid.teams[1].name, lattice.chair.name, "", "", ""))
 
-		print()
+		interaction_modules.commandline("")
 	else:
-		print("\033[1;35m"+"------------------------------- matchups for round"+str(round_num)+" ------------------------------------"+"\033[0m")	
-		print("\033[33m             Gov     :     Opp     \033[0m")
-		print("---------------------------------------------")
+		interaction_modules.commandline("\033[1;35m"+"------------------------------- matchups for round"+str(round_num)+" ------------------------------------"+"\033[0m")	
+		interaction_modules.commandline("\033[33m             Gov     :     Opp     \033[0m")
+		interaction_modules.commandline("---------------------------------------------")
 		for lattice in allocations[0]:
 			if lattice.venue:
 				if len(lattice.panel) == 2:
-					print("%20.20s : %-20.20s | chair : %-20.20s(panel : %-20.20s, %-20.20s)| venue : %-10.10s" % (lattice.grid.teams[0].name, lattice.grid.teams[1].name, lattice.chair.name, lattice.panel[0].name, lattice.panel[1].name, lattice.venue.name))
-					print("%20.20s : %-20.20s |" % (lattice.grid.teams[2].name, lattice.grid.teams[3].name))
-					print("---------------------------------------------")
+					interaction_modules.commandline("%20.20s : %-20.20s | chair : %-20.20s(panel : %-20.20s, %-20.20s)| venue : %-10.10s" % (lattice.grid.teams[0].name, lattice.grid.teams[1].name, lattice.chair.name, lattice.panel[0].name, lattice.panel[1].name, lattice.venue.name))
+					interaction_modules.commandline("%20.20s : %-20.20s |" % (lattice.grid.teams[2].name, lattice.grid.teams[3].name))
+					interaction_modules.commandline("---------------------------------------------")
 				elif len(lattice.panel) == 1:
-					print("%20.20s : %-20.20s | chair : %-20.20s(panel : %-20.20s, %-20.20s)| venue : %-10.10s" % (lattice.grid.teams[0].name, lattice.grid.teams[1].name, lattice.chair.name, lattice.panel[0].name, "", lattice.venue.name))
-					print("%20.20s : %-20.20s |" % (lattice.grid.teams[2].name, lattice.grid.teams[3].name))
-					print("---------------------------------------------")
+					interaction_modules.commandline("%20.20s : %-20.20s | chair : %-20.20s(panel : %-20.20s, %-20.20s)| venue : %-10.10s" % (lattice.grid.teams[0].name, lattice.grid.teams[1].name, lattice.chair.name, lattice.panel[0].name, "", lattice.venue.name))
+					interaction_modules.commandline("%20.20s : %-20.20s |" % (lattice.grid.teams[2].name, lattice.grid.teams[3].name))
+					interaction_modules.commandline("---------------------------------------------")
 				else:
-					print("%20.20s : %-20.20s | chair : %-20.20s(panel : %-20.20s, %-20.20s)| venue : %-10.10s" % (lattice.grid.teams[0].name, lattice.grid.teams[1].name, lattice.chair.name, "", "", lattice.venue.name))
-					print("%20.20s : %-20.20s |" % (lattice.grid.teams[2].name, lattice.grid.teams[3].name))
-					print("---------------------------------------------")
+					interaction_modules.commandline("%20.20s : %-20.20s | chair : %-20.20s(panel : %-20.20s, %-20.20s)| venue : %-10.10s" % (lattice.grid.teams[0].name, lattice.grid.teams[1].name, lattice.chair.name, "", "", lattice.venue.name))
+					interaction_modules.commandline("%20.20s : %-20.20s |" % (lattice.grid.teams[2].name, lattice.grid.teams[3].name))
+					interaction_modules.commandline("---------------------------------------------")
 			else:
 				if len(lattice.panel) == 2:
-					print("%20.20s : %-20.20s | chair : %-20.20s(panel : %-20.20s, %-20.20s)| venue : %-10.10s" % (lattice.grid.teams[0].name, lattice.grid.teams[1].name, lattice.chair.name, lattice.panel[0].name, lattice.panel[1].name, ""))
-					print("%20.20s : %-20.20s |" % (lattice.grid.teams[2].name, lattice.grid.teams[3].name))
-					print("---------------------------------------------")
+					interaction_modules.commandline("%20.20s : %-20.20s | chair : %-20.20s(panel : %-20.20s, %-20.20s)| venue : %-10.10s" % (lattice.grid.teams[0].name, lattice.grid.teams[1].name, lattice.chair.name, lattice.panel[0].name, lattice.panel[1].name, ""))
+					interaction_modules.commandline("%20.20s : %-20.20s |" % (lattice.grid.teams[2].name, lattice.grid.teams[3].name))
+					interaction_modules.commandline("---------------------------------------------")
 				elif len(lattice.panel) == 1:
-					print("%20.20s : %-20.20s | chair : %-20.20s(panel : %-20.20s, %-20.20s)| venue : %-10.10s" % (lattice.grid.teams[0].name, lattice.grid.teams[1].name, lattice.chair.name, lattice.panel[0].name, "", ""))
-					print("%20.20s : %-20.20s |" % (lattice.grid.teams[2].name, lattice.grid.teams[3].name))
-					print("---------------------------------------------")
+					interaction_modules.commandline("%20.20s : %-20.20s | chair : %-20.20s(panel : %-20.20s, %-20.20s)| venue : %-10.10s" % (lattice.grid.teams[0].name, lattice.grid.teams[1].name, lattice.chair.name, lattice.panel[0].name, "", ""))
+					interaction_modules.commandline("%20.20s : %-20.20s |" % (lattice.grid.teams[2].name, lattice.grid.teams[3].name))
+					interaction_modules.commandline("---------------------------------------------")
 				else:
-					print("%20.20s : %-20.20s | chair : %-20.20s(panel : %-20.20s, %-20.20s)| venue : %-10.10s" % (lattice.grid.teams[0].name, lattice.grid.teams[1].name, lattice.chair.name, "", "", ""))
-					print("%20.20s : %-20.20s |" % (lattice.grid.teams[2].name, lattice.grid.teams[3].name))
-					print("---------------------------------------------")
+					interaction_modules.commandline("%20.20s : %-20.20s | chair : %-20.20s(panel : %-20.20s, %-20.20s)| venue : %-10.10s" % (lattice.grid.teams[0].name, lattice.grid.teams[1].name, lattice.chair.name, "", "", ""))
+					interaction_modules.commandline("%20.20s : %-20.20s |" % (lattice.grid.teams[2].name, lattice.grid.teams[3].name))
+					interaction_modules.commandline("---------------------------------------------")
 
-		print()
+		interaction_modules.commandline("")
 
 def show_grid_list(grid_list):
 	rows = []
@@ -451,7 +450,7 @@ def show_adoptbitslong(team_list, grid_list, level):
 				row += str(xbit(grid.adoptbitslong, 3*level))## shita x keta
 		rows.append(row)
 	show_rows(rows)
-	print()
+	interaction_modules.progress("")
 	rows = []
 	for team in team_list:
 		row = ""
@@ -460,7 +459,7 @@ def show_adoptbitslong(team_list, grid_list, level):
 				row += str(xbit(grid.adoptbitslong, 3*level+1))## shita x keta
 		rows.append(row)
 	show_rows(rows)
-	print()
+	interaction_modules.progress("")
 	rows = []
 	for team in team_list:
 		row = ""
@@ -497,7 +496,7 @@ def show_adoptbitslong_lattice(adjudicator_list, lattice_list, level):
 				row += str(xbit(lattice.adoptbitslong, 3*level))## shita x keta
 		if row != "": rows.append(row)
 	show_rows(rows)
-	print()
+	interaction_modules.progress("")
 	rows = []
 	for adjudicator in adjudicator_list:
 		row = ""
@@ -506,7 +505,7 @@ def show_adoptbitslong_lattice(adjudicator_list, lattice_list, level):
 				row += str(xbit(lattice.adoptbitslong, 3*level+1))## shita x keta
 		if row != "": rows.append(row)
 	show_rows(rows)
-	print()
+	interaction_modules.progress("")
 	rows = []
 	for adjudicator in adjudicator_list:
 		row = ""
@@ -518,11 +517,7 @@ def show_adoptbitslong_lattice(adjudicator_list, lattice_list, level):
 
 def show_rows(rows):
 	for row in rows:
-		print(row)
-
-def progress(sentence):
-
-	print(sentence + "...")
+		interaction_modules.progress(row)
 
 def show_teams_scores(team_list, teamnum):
 	team_list_cp = copy.copy(team_list)
@@ -536,7 +531,7 @@ def show_teams_scores(team_list, teamnum):
 				else:
 					text += "{0:1d} ".format(win)
 			text += "]"
-			print(text)
+			interaction_modules.commandline(text)
 	else:
 		for team in team_list_cp:
 			text = "%20.20s: %2d win-points, %-3.2f points, position(og, oo, cg, co):[ %1d %1d %1d %1d ], win-points(R1, R2, ...):[ " % (team.name, sum(team.wins), sum(team.scores), team.past_sides.count("og"), team.past_sides.count("oo"), team.past_sides.count("cg"), team.past_sides.count("co"))
@@ -546,17 +541,19 @@ def show_teams_scores(team_list, teamnum):
 				else:
 					text += "{0:1d} ".format(win)
 			text += "]"
-			print(text)
+			interaction_modules.commandline(text)
 
 def show_debater_scores(team_list):
+	"""
 	for team in team_list:
 		for debater in team.debaters:
 			line = "%20.20s (%20.20s): " % (debater.name, team.name)
 			for i, score_list in enumerate(debater.score_lists):
 				line = line + "[R %2d]"%(i+1)
 				for score in score_list:
-					line = line + "%02.2f" % score
-			print(line)
+					line = line + "%02.2f " % score
+			interaction_modules.commandline(line)
+	"""
 	debater_list = [debater for team in team_list for debater in team.debaters]
 	debater_list.sort(key=lambda debater: sum(debater.scores), reverse=True)
 	for debater in debater_list:
@@ -564,14 +561,14 @@ def show_debater_scores(team_list):
 		for i, score_list in enumerate(debater.score_lists):
 			line = line + "[R %2d]"%(i+1)
 			for score in score_list:
-				line = line + "%02.2f" % score
-		print(line)
+				line = line + "%02.2f " % score
+		interaction_modules.commandline(line)
 
 def show_evaluation(adjudicator_list):
-	print("----------------------------------evaluation----------------------------------------")
+	interaction_modules.commandline("----------------------------------evaluation----------------------------------------")
 	for adjudicator in adjudicator_list:
-		print("%20.20s: evaluation: %2.2f"%(adjudicator.name, adjudicator.evaluation))
-	print()
+		interaction_modules.commandline("%20.20s: evaluation: %2.2f"%(adjudicator.name, adjudicator.evaluation))
+	interaction_modules.commandline("")
 
 def show_adjudicator_score(adjudicator_list):
 	adjudicator_list_cp = copy.copy(adjudicator_list)
@@ -581,98 +578,33 @@ def show_adjudicator_score(adjudicator_list):
 	adjudicator_list_cp.sort(key=lambda adjudicator: ret_avr(adjudicator), reverse=True)
 
 	for adjudicator in adjudicator_list_cp:
-		print("%20.20s | average: % 2.2f, (previous) evaluation: % 2.2f, active: %1d (chair: %1d, panel: %1d), score (rank of debate): " % (adjudicator.name, ret_avr(adjudicator), adjudicator.evaluation, adjudicator.active_num, adjudicator.active_num_as_chair, adjudicator.active_num-adjudicator.active_num_as_chair), end=' ')
+		line = "%20.20s | average: % 2.2f, (previous) evaluation: % 2.2f, active: %1d (chair: %1d, panel: %1d), score (rank of debate): " % (adjudicator.name, ret_avr(adjudicator), adjudicator.evaluation, adjudicator.active_num, adjudicator.active_num_as_chair, adjudicator.active_num-adjudicator.active_num_as_chair)
 		for rank, score in zip(adjudicator.watched_debate_ranks_sub, adjudicator.scores_sub):
 			if score == 'n/a':
-				print(" n/a (n/a)", end=' ') 
+				line = line + " n/a (n/a)"
 			else:
-				print("%2.2f (%3d)" % (score, rank), end=' ') 
-		print()
+				line = line + "%2.2f (%3d)" % (score, rank)
+		interaction_modules.commandline(line)
 
 def show_adjudicators(adjudicator_list):
 	for adjudicator in adjudicator_list:
 		if adjudicator.absent:
-			print("\033[37m"+"%20.20s : %2d active, %20.20s, %20.20s(absent)\033[0m"%(adjudicator.name, adjudicator.active_num, str(adjudicator.institutions), str(adjudicator.conflict_teams)))
+			interaction_modules.commandline("\033[37m"+"%20.20s : %2d active, %20.20s, %20.20s(absent)\033[0m"%(adjudicator.name, adjudicator.active_num, str(adjudicator.institutions), str(adjudicator.conflict_teams)))
 		else:
-			print("%20.20s : %2d active, %20.20s, %20.20s"%(adjudicator.name, adjudicator.active_num, str(adjudicator.institutions), str(adjudicator.conflict_teams)))
+			interaction_modules.commandline("%20.20s : %2d active, %20.20s, %20.20s"%(adjudicator.name, adjudicator.active_num, str(adjudicator.institutions), str(adjudicator.conflict_teams)))
 
 def show_teams(team_list):
 	for team in team_list:
 		institution_text = str(team.institutions)
 		if not team.available:
-			print("\033[37m"+"{0:20s} : {1:20s}     (absent)\033[0m".format(team.name, institution_text))
+			interaction_modules.commandline("\033[37m"+"{0:20s} : {1:20s}     (absent)\033[0m".format(team.name, institution_text))
 		else:
-			print("{0:20s} : {1:20s}".format(team.name, institution_text))
+			interaction_modules.commandline("{0:20s} : {1:20s}".format(team.name, institution_text))
 
 def show_venues(venue_list):
 	for venue in venue_list:
 		if venue.available:
-			print("%5s (priority: %4s)"%(str(venue.name),str(venue.priority)))
+			interaction_modules.commandline("%5s (priority: %4s)"%(str(venue.name),str(venue.priority)))
 		else:
-			print("\033[37m"+"%5s (priority: %4s) (not available)\033[0m"%(str(venue.name),str(venue.priority)))
+			interaction_modules.commandline("\033[37m"+"%5s (priority: %4s) (not available)\033[0m"%(str(venue.name),str(venue.priority)))
 
-def get_progressbar_str(progress):
-	MAX_LEN = 30
-	BAR_LEN = int(MAX_LEN * progress)
-	return ('[' + '=' * BAR_LEN + ('>' if BAR_LEN < MAX_LEN else '') + ' ' * (MAX_LEN-BAR_LEN) + '] %.1f%%' % (progress * 100.0))
-
-def progress_bar2(k, length):
-	progress = float(k) / length
-	sys.stderr.write('\r\033[K' + get_progressbar_str(progress))
-	sys.stderr.flush()
-
-def show_logo_star():
-	length = 120
-	sentence = "UTab for PDA ver3.1"
-	base = "-"*length
-	for k, char in enumerate(reversed(sentence)):
-		for i in range(int(length/2)+int(len(sentence)/2)-k):
-			base = base[:i+1]+"-"+base[i+2:]
-			base = base[:i+2]+char+base[i+3:]
-			sys.stdout.write("\r"+base)
-			sys.stdout.flush()
-			time.sleep(0.001*(1+int((k+1)**(1/2.0))))
-	time.sleep(0.7)
-	for i in range(length*2):
-		for j in range(i+1):
-			base = base[:length-j]+" "+base[length-j:-1]
-			sys.stdout.write("\r"+base)
-			sys.stdout.flush()
-			time.sleep(0.0015/int(1+(i**1.2)*0.1))
-	time.sleep(0.3)
-	sys.stdout.write("\r"*length)
-		
-def show_logo_random_fade():
-	length = 120
-	sentence = "UTab for PDA ver2.5"
-	base = "-"*length
-	for k, char in enumerate(reversed(sentence)):
-		for i in range(int(length/2)+int(len(sentence)/2)-k):
-			base = base[:i+1]+"-"+base[i+2:]
-			base = base[:i+2]+char+base[i+3:]
-			sys.stdout.write("\r"+base)
-			sys.stdout.flush()
-			time.sleep(0.001*(1+int((k+1)**(1/2.0))))
-	time.sleep(0.7)
-	numbers = [i for i in range(length)]
-	random.shuffle(numbers)
-	for i in range(length):
-		n = numbers[i]
-		base = base[:n+1]+" "+base[n+2:]
-		sys.stdout.write("\r"+base)
-		sys.stdout.flush()
-		time.sleep(0.004)
-	time.sleep(0.7)
-
-	sys.stdout.write("\r"*length)
-
-def progress_bar():
-	END = 170
-	for i in range(END+1):
-		time.sleep(0.01)
-		progress = 1.0 * i / END
-		sys.stderr.write('\r\033[K' + get_progressbar_str(progress))
-		sys.stderr.flush()
-	sys.stderr.write('\n')
-	sys.stderr.flush()
-	time.sleep(0.7)

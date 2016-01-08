@@ -1,13 +1,13 @@
 # -*- coding: utf-8 -*-
 import math
+from .bit_modules import *
 
 class Team:
-	def __init__(self, code, name, debater_names, institution_scale, institutions):
+	def __init__(self, code, name, debater_names, institutions):
 		self.code = code
 		self.name = name
-		self.institutions = [institution for institution in institutions if institution != '']
-		self.institution_scale = institution_scale
-		self.debaters = [Debater(debater_name) for debater_name in debater_names]
+		self.institutions = institutions
+		self.debaters = [Debater(self.code*len(debater_names)+j, debater_name) for j, debater_name in enumerate(debater_names)]
 		self.past_opponents = []
 		self.past_sides = []
 		self.past_sides_sub = []
@@ -48,11 +48,18 @@ class Team:
 	def __ne__(self, other):
 		return self.code != other
 
+	"""
 	def __hash__(self):
 		hash_value = self.code + (self.ranking<<10) + (len(self.institutions)<<20)
 		for k, debater in enumerate(self.debaters):
 			hash_value += len(debater.name)<<(20+k*10)
 		return hash_value
+	"""
+	def __hash__(self):
+		return self.code
+
+	def __str__(self):
+		return self.name
 
 	def finishing_process(self, opponent, score, side, win, margin):
 		self.past_opponents.extend(opponent)
@@ -70,8 +77,33 @@ class Team:
 		self.wins_sub.append('n/a')
 		self.past_sides_sub.append('n/a')
 
+class Institution:
+	def __init__(self, code, name, scale):
+		self.code = code
+		self.name = name
+		self.scale = scale
+
+	def __eq__(self, other):
+		return self.code == other
+
+	def __ne__(self, other):
+		return self.code != other
+
+	def __hash__(self):
+		return self.code
+
+	def __str__(self):
+		return self.name
+
+	def __repr__(self):
+		return self.name
+
+	def __unicode__(self):
+		return self.name
+
 class Debater:
-	def __init__(self, name):
+	def __init__(self, code, name):
+		self.code = code
 		self.name = name
 		self.score_lists = []
 		self.scores = []
@@ -138,66 +170,29 @@ class Debater:
 		self.scores_sub.append(score)
 
 	def __eq__(self, other):
-		return self.name == other
+		return self.code == other
 
 	def __ne__(self, other):
-		return self.name != other
+		return self.code != other
+
+	def __hash__(self):
+		return self.code
+
+	def __str__(self):
+		return self.name
 
 class Venue:
-	def __init__(self, name, priority):
+	def __init__(self, code, name, priority):
+		self.code = code
 		self.name = name
 		self.available = True
 		self.priority = priority
 
-class Lattice:
-	def __init__(self, grid, chair):
-		self.grid = grid
-		self.chair = chair
-		self.panel = []
-		self.adoptbits = 0
-		self.adoptbitslong = 0
-		self.adoptbits_strict = 0
-		self.adoptness1 = 0
-		self.adoptness2 = 0
-		self.adoptness1long = 0
-		self.adoptness2long = 0
-		self.adoptness_strict1 = 0
-		self.adoptness_strict2 = 0
-		self.adoptness_weight1 = 0
-		self.adoptness_weight2 = 0
-		self.comparison1 = 0
-		self.comparison2 = 0
-		self.available = True
-		self.warnings = []
-		self.large_warnings = []
-		self.venue = None
-		#self.avoid_by_conflict = False
-		#self.adj_unfair = False
-		#self.strength_coordinating = 0
-		#self.uncoordinateness = 0
-		#self.conflict = False
-		#self.personal_conflict = False
-
-	def __eq__(self, other):
-		if self.grid.teams == other.grid.teams and self.chair == other.chair:
-			return True
-		else:
-			return False
-
-	def __ne__(self, other):
-		if self.grid.teams != other.grid.teams or self.chair != other.chair:
-			return True
-		else:
-			return False
-
 	def __hash__(self):
-		hash_value = ord(self.chair.name[0])
-		for k, team in enumerate(self.grid.teams):
-			hash_value += team.code<<10*k
-		return hash_value
+		return self.code
 
-	def grid_type(self):
-		return self.__class__.__name__
+	def __str__(self):
+		return self.name
 
 class Adjudicator:
 	def __init__(self, code, name, reputation, judge_test, institutions, conflict_teams):
@@ -266,18 +261,19 @@ class Adjudicator:
 		self.watched_teams_sub.extend(['n/a' for i in range(teamnum)])
 
 	def __eq__(self, other):
-		return self.name == other
+		return self.code == other
 
 	def __ne__(self, other):
-		return self.name != other
+		return self.code != other
 
-class Grid:
-	def __init__(self, teams):
-		self.teams = teams
-		if len(list(set(self.teams))) != len(self.teams):
-			self.available = False
-		else:
-			self.available = True
+	def __hash__(self):
+		return self.code
+
+	def __str__(self):
+		return self.name
+
+class GL:
+	def __init__(self):
 		self.adoptbits = 0
 		self.adoptbitslong = 0
 		self.adoptbits_strict = 0
@@ -291,8 +287,77 @@ class Grid:
 		self.adoptness_weight2 = 0
 		self.comparison1 = 0
 		self.comparison2 = 0
+		self.available = True
 		self.warnings = []
 		self.large_warnings = []
+
+	def set_adoptness1(self):
+		for k, bit in enumerate(eachbit(self.adoptbits)):
+			if bit == 0:
+				self.adoptness1 = k
+				break
+
+	def set_adoptness2(self):
+		count = 0
+		for k, bit in enumerate(eachbit(self.adoptbits)):
+			if bit == 1:
+				count += 1
+		self.adoptness2 = count
+
+	def set_adoptness1long(self):
+		for k, bit in enumerate(eachbit(self.adoptbitslong)):
+			if bit == 0:
+				self.adoptness1long = k
+				break
+		
+	def set_adoptness2long(self):
+		count = 0
+		for k, bit in enumerate(eachbit(self.adoptbitslong)):
+			if bit == 1:
+				count += 1
+		self.adoptness2long = count
+		
+	def set_adoptness_strict1(self):
+		for k, bit in enumerate(eachbit(self.adoptbits_strict)):
+			if bit == 0:
+				self.adoptness_strict1 = k
+				break
+		
+	def set_adoptness_strict2(self):
+		count = 0
+		for k, bit in enumerate(eachbit(self.adoptbits_strict)):
+			if bit == 1:
+				count += 1
+		self.adoptness_strict2 = count
+		
+	def set_adoptness_weight1(self):
+		count = 0
+		for k, bit in enumerate(eachbit(self.adoptbits_strict)):
+			if bit == 1:
+				count += 1-k*0.04
+		self.adoptness_weight1 = count
+		
+	def set_adoptness_weight2(self):
+		count = 0
+		for k, bit in enumerate(eachbit(self.adoptbitslong)):
+			if bit == 1:
+				count += 1-k*0.04
+		self.adoptness_weight2 = count
+
+	def set_adoptness(self):
+		self.set_adoptness1()
+		self.set_adoptness2()
+		self.set_adoptness1long()
+		self.set_adoptness2long()
+		self.set_adoptness_strict1()
+		self.set_adoptness_strict2()
+		self.set_adoptness_weight1()
+		self.set_adoptness_weight2()
+
+class Grid(GL):
+	def __init__(self, teams):
+		GL.__init__(self)
+		self.teams = teams
 		self.past_match = 0
 		self.power_pairing = None
 		self.related_grids = []
@@ -320,6 +385,53 @@ class Grid:
 	def grid_type(self):
 		return self.__class__.__name__
 
+	def __str__(self):
+		string = ""
+		for team in self.teams:
+			string = string + team.name
+		return string
+
+class Lattice(GL):
+	def __init__(self, grid, chair):
+		GL.__init__(self)
+		self.grid = grid
+		self.chair = chair
+		self.panel = []
+		self.venue = None
+		#self.avoid_by_conflict = False
+		#self.adj_unfair = False
+		#self.strength_coordinating = 0
+		#self.uncoordinateness = 0
+		#self.conflict = False
+		#self.personal_conflict = False
+
+	def __eq__(self, other):
+		if self.grid.teams == other.grid.teams and self.chair == other.chair:
+			return True
+		else:
+			return False
+
+	def __ne__(self, other):
+		if self.grid.teams != other.grid.teams or self.chair != other.chair:
+			return True
+		else:
+			return False
+
+	def __hash__(self):
+		hash_value = ord(self.chair.name[0])
+		for k, team in enumerate(self.grid.teams):
+			hash_value += team.code<<10*k
+		return hash_value
+
+	def __str__(self):
+		string = self.chair.name + ":" if chair else ""
+		for team in self.grid.teams:
+			string = string + team.name
+		return string
+
+	def grid_type(self):
+		return self.__class__.__name__
+
 class Grid_list_info:
 	def __init__(self):
 		self.power_pairing_indicator = None
@@ -340,3 +452,87 @@ class Lattice_list_info:
 		self.large_warnings = []
 		self.allocation_no = None
 		self.comment = ""
+
+
+
+
+
+class SameInstitution(Exception):
+	def __init__(self, institution):
+		self.institution = institution
+
+	def __str__(self):
+		return self.shortwarning()
+
+	def shortwarning(self):
+		return "wrn(same insti("+self.institution.scale+"))"
+
+	def longwarning(self):
+		return "warning : a team matching with the same institution(scale:"+self.institution.scale+")"
+
+class PastOpponent(Exception):
+	def __init__(self, team1, team2):
+		self.team1 = team1
+		self.team2 = team2
+
+	def __str__(self):
+		return self.shortwarning()
+
+	def shortwarning(self):
+		return "wrn(past opponent)"
+
+	def longwarning(self):
+		return "warning : a team matching again with past opponent: "+self.team1.name+self.team2.name
+
+class Sided(Exception):
+	def __init__(self, team, side, side_counts):
+		self.team = team
+		self.side = side
+		self.side_counts = side_counts
+
+	def __str__(self):
+		return self.shortwarning()
+
+	def shortwarning(self):
+		return "wrn(unfair side)"
+
+	def longwarning(self):
+		string = "(" + ":".join([str(i) for i in self.side_counts])+")"
+		return "warning : a team's side unfair :"+str(self.team.name)+string
+
+class AllSided(Exception):
+	def __init__(self, team, side, side_count):
+		self.team = team
+		self.side = side
+		self.side_count = side_count
+
+	def __str__(self):
+		return self.shortwarning()
+
+	def shortwarning(self):
+		return "wrn(one sided)"
+
+	def longwarning(self):
+		return "warning : a team's side all {0} ({1})".format(self.side, self.team.past_sides.count(self.side))
+
+class PowerPairing(Exception):
+	def __init__(self, team1, team2, difference):
+		self.team1 = team1
+		self.team2 = team2
+		self.difference = difference
+
+	def __str__(self):
+		return self.shortwarning()
+
+	def shortwarning(self):
+		return "wrn(diff {0:d}%, {1}:{2})".format(self.difference, sum(self.team1.wins), sum(self.team2.wins))
+
+	def longwarning(self):
+		return "warning : stronger vs weaker team, {0:12s}:{1:12s}, ranking difference: {2:d}%, wins: {3:d}-{4:d}".format(self.team1.name, self.team2.name, self.difference, sum(self.team1.wins), sum(self.team2.wins))
+
+
+
+
+
+
+

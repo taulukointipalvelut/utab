@@ -293,57 +293,20 @@ def prevent_same_opponent(grid_list, round_num, team_list, shift):
 					grid.adoptbits_strict = bitshiftadd(grid.adoptbitslong, 0, shift*3+2)
 
 def prevent_same_institution_a(grid_list, round_num, team_list, shift):
-	for grid in grid_list:#mark true on grids which should be avoided by institution affirmative action
-		pair_list = list(itertools.combinations(grid.teams, 2))
-		for pair in pair_list:
-			conflicting_insti = (set(pair[0].institutions) & set(pair[1].institutions))
-			if list(conflicting_insti) != [] and pair[0].institution_scale == "a":
-				grid.adoptbitslong = bitshiftadd(grid.adoptbitslong, 0, shift*3)
-				grid.adoptbitslong = bitshiftadd(grid.adoptbitslong, 0, shift*3+1)
-				grid.adoptbitslong = bitshiftadd(grid.adoptbitslong, 0, shift*3+2)
-				grid.adoptbits_strict = bitshiftadd(grid.adoptbitslong, 0, shift*3)
-				grid.adoptbits_strict = bitshiftadd(grid.adoptbitslong, 0, shift*3+1)
-				grid.adoptbits_strict = bitshiftadd(grid.adoptbitslong, 0, shift*3+2)
-				grid.adoptbits = bitshiftadd(grid.adoptbits, 0, shift)
-				break
-		else:
-			grid.adoptbitslong = bitshiftadd(grid.adoptbitslong, 1, shift*3)
-			grid.adoptbitslong = bitshiftadd(grid.adoptbitslong, 1, shift*3+1)
-			grid.adoptbitslong = bitshiftadd(grid.adoptbitslong, 1, shift*3+2)
-			grid.adoptbits_strict = bitshiftadd(grid.adoptbitslong, 1, shift*3)
-			grid.adoptbits_strict = bitshiftadd(grid.adoptbitslong, 1, shift*3+1)
-			grid.adoptbits_strict = bitshiftadd(grid.adoptbitslong, 1, shift*3+2)
-			grid.adoptbits = bitshiftadd(grid.adoptbits, 1, shift)
+	return prevent_same_institution(grid_list, round_num, team_list, "a", shift)
 
 def prevent_same_institution_b(grid_list, round_num, team_list, shift):
-	for grid in grid_list:#mark true on grids which should be avoided by institution affirmative action
-		pair_list = list(itertools.combinations(grid.teams, 2))
-		for pair in pair_list:
-			conflicting_insti = (set(pair[0].institutions) & set(pair[1].institutions))
-			if list(conflicting_insti) != [] and pair[0].institution_scale == "b":
-				grid.adoptbitslong = bitshiftadd(grid.adoptbitslong, 0, shift*3)
-				grid.adoptbitslong = bitshiftadd(grid.adoptbitslong, 0, shift*3+1)
-				grid.adoptbitslong = bitshiftadd(grid.adoptbitslong, 0, shift*3+2)
-				grid.adoptbits_strict = bitshiftadd(grid.adoptbitslong, 0, shift*3)
-				grid.adoptbits_strict = bitshiftadd(grid.adoptbitslong, 0, shift*3+1)
-				grid.adoptbits_strict = bitshiftadd(grid.adoptbitslong, 0, shift*3+2)
-				grid.adoptbits = bitshiftadd(grid.adoptbits, 0, shift)
-				break
-		else:
-			grid.adoptbitslong = bitshiftadd(grid.adoptbitslong, 1, shift*3)
-			grid.adoptbitslong = bitshiftadd(grid.adoptbitslong, 1, shift*3+1)
-			grid.adoptbitslong = bitshiftadd(grid.adoptbitslong, 1, shift*3+2)
-			grid.adoptbits_strict = bitshiftadd(grid.adoptbitslong, 1, shift*3)
-			grid.adoptbits_strict = bitshiftadd(grid.adoptbitslong, 1, shift*3+1)
-			grid.adoptbits_strict = bitshiftadd(grid.adoptbitslong, 1, shift*3+2)
-			grid.adoptbits = bitshiftadd(grid.adoptbits, 1, shift)
+	return prevent_same_institution(grid_list, round_num, team_list, "b", shift)
 
 def prevent_same_institution_c(grid_list, round_num, team_list, shift):
+	return prevent_same_institution(grid_list, round_num, team_list, "c", shift)
+
+def prevent_same_institution(grid_list, round_num, team_list, scale, shift):
 	for grid in grid_list:#mark true on grids which should be avoided by institution affirmative action
 		pair_list = list(itertools.combinations(grid.teams, 2))
 		for pair in pair_list:
-			conflicting_insti = (set(pair[0].institutions) & set(pair[1].institutions))
-			if list(conflicting_insti) != [] and pair[0].institution_scale == "c":
+			conflicting_insti = list(set(pair[0].institutions) & set(pair[1].institutions))
+			if conflicting_insti != [] and scale in [insti.scale for insti in conflicting_insti]:
 				grid.adoptbitslong = bitshiftadd(grid.adoptbitslong, 0, shift*3)
 				grid.adoptbitslong = bitshiftadd(grid.adoptbitslong, 0, shift*3+1)
 				grid.adoptbitslong = bitshiftadd(grid.adoptbitslong, 0, shift*3+2)
@@ -622,7 +585,7 @@ def prevent_unfair_side(grid_list, round_num, team_list, shift):
 					grid.adoptbits_strict = bitshiftadd(grid.adoptbitslong, 0, shift*3+2)
 		"""
 
-def prevent_str_wek_round(round_num, adjudicator_list, selected_grid_list, team_list, lattice_list, break_team_num, shift):
+def prevent_str_wek_round(round_num, tournament, selected_grid_list, lattice_list, break_team_num, shift):
 	true_grids_list1 = []
 	true_grids_list2 = []
 	true_grids_list3 = []
@@ -652,7 +615,7 @@ def prevent_str_wek_round(round_num, adjudicator_list, selected_grid_list, team_
 			lattice.adoptbitslong = bitshiftadd(lattice.adoptbitslong, 0, shift*3+2)
 			lattice.adoptbits_strict = bitshiftadd(lattice.adoptbitslong, 0, shift*3+2)
 
-def prevent_conflicts(round_num, adjudicator_list, selected_grid_list, team_list, lattice_list, break_team_num, shift):
+def prevent_conflicts(round_num, tournament, selected_grid_list, lattice_list, break_team_num, shift):
 	if len(lattice_list[0].grid.teams) == 2:
 		for lattice in lattice_list:
 			if lattice.grid.teams[0].name in lattice.chair.conflict_teams or lattice.grid.teams[1].name in lattice.chair.conflict_teams:#personal conflict
@@ -804,12 +767,12 @@ def prevent_conflicts(round_num, adjudicator_list, selected_grid_list, team_list
 					lattice.adoptbits_strict = bitshiftadd(lattice.adoptbitslong, 1, shift*3+2)
 					lattice.adoptbits = bitshiftadd(lattice.adoptbits, 1, shift)
 
-def prevent_unfair_adjudicators(round_num, adjudicator_list, selected_grid_list, team_list, lattice_list, break_team_num, shift):
+def prevent_unfair_adjudicators(round_num, tournament, selected_grid_list, lattice_list, break_team_num, shift):
 	lattice_list_cp = copy.copy(lattice_list)
 	lattice_list_cp.sort(key=lambda lattice: lattice.chair.active_num)
 	
 	max_active_num = 0
-	for adjudicator in adjudicator_list:
+	for adjudicator in tournament["adjudicator_list"]:
 		if adjudicator.active_num > max_active_num:
 			max_active_num = adjudicator.active_num
 	
@@ -907,7 +870,7 @@ def prevent_unfair_adjudicators(round_num, adjudicator_list, selected_grid_list,
 					lattice.adoptbitslong = bitshiftadd(lattice.adoptbitslong, 0, shift*3+2)
 		"""
 
-def rotation_allocation(round_num, adjudicator_list, selected_grid_list, team_list, lattice_list, break_team_num, shift):
+def rotation_allocation(round_num, tournament, selected_grid_list, lattice_list, break_team_num, shift):
 	lattice_list_cp = copy.copy(lattice_list)
 	lattice_list_cp.sort(key=lambda lattice: lattice.chair.active_num_as_chair)
 
@@ -979,7 +942,7 @@ def rotation_allocation(round_num, adjudicator_list, selected_grid_list, team_li
 				lattice.adoptbits_strict = bitshiftadd(lattice.adoptbitslong, 1, shift*3+1)
 				lattice.adoptbits_strict = bitshiftadd(lattice.adoptbitslong, 1, shift*3+2)
 
-def avoid_watched_teams(round_num, adjudicator_list, selected_grid_list, team_list, lattice_list, break_team_num, shift):
+def avoid_watched_teams(round_num, tournament, selected_grid_list, lattice_list, break_team_num, shift):
 	lattice_list_cp = copy.copy(lattice_list)
 	lattice_list_cp.sort(key=lambda lattice: seen_num(lattice), reverse = True)
 	all_len = len(lattice_list)
@@ -1052,13 +1015,13 @@ def add_bubble(selected_grid_list, may_be_breaking_wins):
 			else:
 				grid.bubble = 5
 
-def prioritize_bubble_round(round_num, adjudicator_list, selected_grid_list, team_list, lattice_list, break_team_num, shift):
+def prioritize_bubble_round(round_num, tournament, selected_grid_list, lattice_list, break_team_num, shift):
 	if len(lattice_list[0].grid.teams) == 2:
 		available_team_num = 0
-		for team in team_list:
+		for team in tournament["team_list"]:
 			if team.available:
 				available_team_num += 1
-		wins_distribution = [sum(team.wins) for team in team_list if team.available]
+		wins_distribution = [sum(team.wins) for team in tournament["team_list"] if team.available]
 
 		expected_wins_distribution = next_wins_distribution(wins_distribution, 2)
 
@@ -1146,10 +1109,10 @@ def prioritize_bubble_round(round_num, adjudicator_list, selected_grid_list, tea
 		"""
 	else:
 		available_team_num = 0
-		for team in team_list:
+		for team in tournament["team_list"]:
 			if team.available:
 				available_team_num += 1
-		wins_distribution = [sum(team.wins) for team in team_list if team.available]
+		wins_distribution = [sum(team.wins) for team in tournament["team_list"] if team.available]
 
 		expected_wins_distribution = next_wins_distribution(wins_distribution, 4)
 
@@ -1196,7 +1159,7 @@ def prioritize_bubble_round(round_num, adjudicator_list, selected_grid_list, tea
 				lattice.adoptbits_strict = bitshiftadd(lattice.adoptbitslong, 0, shift*3+1)
 				lattice.adoptbits_strict = bitshiftadd(lattice.adoptbitslong, 0, shift*3+2)
 
-def random_allocation(round_num, adjudicator_list, selected_grid_list, team_list, lattice_list, break_team_num, shift):
+def random_allocation(round_num, tournament, selected_grid_list, lattice_list, break_team_num, shift):
 	lattice_list_cp = copy.copy(lattice_list)
 	random.shuffle(lattice_list_cp)
 

@@ -2,6 +2,7 @@
 from .classes import *
 from .bit_modules import *
 from .property_modules import *
+from . import interaction_modules
 from datetime import datetime
 import random
 import shutil
@@ -25,8 +26,8 @@ def round_str2float(ele, m):
 	
 def export_blank_results(allocations, round_num, style_cfg, filename):
 	if os.path.exists(filename):
-		print("the file", filename, "already exists")
-		input("Press Enter to overwrite the file > ")
+		if not interaction_modules.overwrite("the file", filename, "already exists"):return
+
 	with open(filename, "w") as g:
 		writer = csv.writer(g)
 		if style_cfg["team_num"] == 4:
@@ -55,10 +56,10 @@ def read_results(filename, style_cfg):
 		results.append([row[0], row[1]]+[float(row[2+i]) for i in range(positions)]+[int(row[2+positions])]+[row[3+positions+j] for j in range(team_num-1)]+[row[2+team_num+positions]])
 	return results
 
-def read_and_process_result(round_num, team_list, style_cfg, filename_results):
+def read_and_process_result(round_num, tournament, style_cfg, filename_results):
 	teamnum = style_cfg["team_num"]
 	if check_results(filename_results, style_cfg):
-		print("Results file broken")
+		interaction_modules.warn("Results file broken")
 		raise NameError('Results file broken')
 	results_list = read_results(filename_results, style_cfg)
 	team_list_temp = []
@@ -68,7 +69,7 @@ def read_and_process_result(round_num, team_list, style_cfg, filename_results):
 	score_weight = style_cfg["score_weight"]
 	team_num = style_cfg["team_num"]
 	for i in range(int(len(results_list)/debater_num_per_team)):#results=>[team name, name, R[i] 1st, R[i] 2nd, R[i] rep, win?lose?, opponent name, gov?opp?]
-		for team in team_list:
+		for team in tournament["team_list"]:
 			if team.name == results_list[debater_num_per_team*i][0]:
 				member_names = [results_list[debater_num_per_team*i+j][1] for j in range(debater_num_per_team)]
 				member_score_lists = [results_list[debater_num_per_team*i+j][2:2+positions] for j in range(debater_num_per_team)]
@@ -83,14 +84,14 @@ def read_and_process_result(round_num, team_list, style_cfg, filename_results):
 								score += sc
 								sum_weight += weight
 							if sum_weight == 0:
-								print("error: Results file(Results"+str(round_num)+".csv) broken")
+								interaction_modules.warn("error: Results file(Results"+str(round_num)+".csv) broken")
 							else:
 								score = score/float(sum_weight)
 								debater.finishing_process(member_score_list, score)
 								debater_list_temp.append(debater)
 								break
 					else:
-						print("error: Results file(Results"+str(round_num)+".csv) broken")
+						interaction_modules.warn("error: Results file(Results"+str(round_num)+".csv) broken")
 
 				if team_num == 4:
 					margin = 0
@@ -103,7 +104,7 @@ def read_and_process_result(round_num, team_list, style_cfg, filename_results):
 				team.finishing_process(opponent=[results_list[debater_num_per_team*i][3+positions+j] for j in range(team_num-1)], score=sum([sum(member_score_list) for member_score_list in member_score_lists]), side=side, win=win, margin=margin)
 				team_list_temp.append(team)
 
-	all_debater_list = [d for t in team_list for d in t.debaters]
+	all_debater_list = [d for t in tournament["team_list"] for d in t.debaters]
 	ranking = 1
 	for debater in all_debater_list:
 		debater.rankings.append(ranking)
@@ -115,25 +116,24 @@ def read_and_process_result(round_num, team_list, style_cfg, filename_results):
 		debater.scores_sub.append('n/a')
 		debater.rankings_sub.append('n/a')
 
-	for team in team_list:
+	for team in tournament["team_list"]:
 		if team.name not in [results[0] for results in results_list]:
 			if team.available:
-				print("team: {0:15s} not in results: {1}".format(team.name, filename_results))
+				interaction_modules.warn("team: {0:15s} not in results: {1}".format(team.name, filename_results))
 
-	for team in team_list:
+	for team in tournament["team_list"]:
 		for debater in team.debaters:
 			if debater.name not in [results[1] for results in results_list]:
 				if team.available:
-					print("debater: {0:15s} not in results: {1}".format(debater.name, filename_results))
+					interaction_modules.warn("debater: {0:15s} not in results: {1}".format(debater.name, filename_results))
 
-	rest_team_list = [t for t in team_list if t not in team_list_temp]
+	rest_team_list = [t for t in tournament["team_list"] if t not in team_list_temp]
 	for team in rest_team_list:
 		team.dummy_finishing_process(team_num)
 
 def export_random_result(allocations, round_num, style_cfg, filename):
 	if os.path.exists(filename):
-		print("the file", filename, "already exists")
-		input("Press Enter to overwrite the file > ")
+		if not interaction_modules.overwrite("the file", filename, "already exists"):return
 	with open(filename, "w") as g:
 		writer = csv.writer(g)
 		if style_cfg["team_num"] == 4:
@@ -206,7 +206,7 @@ def export_random_result(allocations, round_num, style_cfg, filename):
 				for j, score_list in enumerate(team_score_list_each):
 					writer.writerow([lattice.grid.teams[k].name, lattice.grid.teams[k].debaters[j].name]+score_list+[win_points[k]]+list(set([t.name for t in lattice.grid.teams])-set([lattice.grid.teams[k].name]))+[sides[k]])					
 
-def read_teams(filename, style_cfg):
+def read_teams(filename, style_cfg, institution_list):
 	f = open(filename, 'r')
 	reader = csv.reader(f)
 	header = next(reader)
@@ -214,9 +214,21 @@ def read_teams(filename, style_cfg):
 	teams = []
 	for code, raw_row in enumerate(reader):
 		row = [raw_one.strip() for raw_one in raw_row]
+		institutions = [institution for institution in institution_list if institution.name in row[1+debater_num_per_team]]
 		if row[0] != '':
-			teams.append(Team(code, row[0], [row[1+i] for i in range(debater_num_per_team)], row[1+debater_num_per_team], row[2+debater_num_per_team:]))#=>code, name, member_names
+			teams.append(Team(code, row[0], [row[1+i] for i in range(debater_num_per_team)], institutions))#=>code, name, member_names
 	return teams
+
+def read_institutions(filename):
+	f = open(filename, 'r')
+	reader = csv.reader(f)
+	header = next(reader)
+	institutions = []
+	for code, raw_row in enumerate(reader):
+		row = [raw_one.strip() for raw_one in raw_row]
+		if row[0] != '':
+			institutions.append(Institution(code, row[0], row[1]))#=>code, name, member_names
+	return institutions
 
 def create_rows_for_results_of_debaters(team_list, style_cfg):
 	individual_score_rows = []
@@ -359,42 +371,40 @@ def export_adj_info(adjudicator_list, filename_adj_info):
 	adjudicator_score_rows_with_ranking = insert_ranking_for_results_of_adjudicators(adjudicator_score_rows)
 
 	if os.path.exists(filename_adj_info):
-		print("the file", filename_adj_info, "already exists")
-		input("Press Enter to overwrite the file > ")
+		if not interaction_modules.overwrite("the file", filename_adj_info, "already exists"):
+			return
 	with open(filename_adj_info, "w") as g:
 		writer = csv.writer(g)
 		for row in adjudicator_score_rows_with_ranking:
 			writer.writerow(row)
 
-def export_results(team_list, adjudicator_list, filename_adj_res, filename_deb_res, filename_tm_res, style_cfg):
-	individual_score_rows = create_rows_for_results_of_debaters(team_list, style_cfg)
+def export_results(tournament, filename_adj_res, filename_deb_res, filename_tm_res, style_cfg):
+	individual_score_rows = create_rows_for_results_of_debaters(tournament["team_list"], style_cfg)
 	individual_score_rows = insert_ranking_for_results_of_debaters(individual_score_rows)
 
 	if os.path.exists(filename_adj_res):
-		print("the file", filename_adj_res, "already exists")
-		input("Press Enter to overwrite the file > ")
+		if not interaction_modules.overwrite("the file", filename_adj_res, "already exists"):
+			return
 	with open(filename_deb_res, "w") as g:
 		writer = csv.writer(g)
 		for row in individual_score_rows:
 			writer.writerow(row)
 
-	score_rows = create_rows_for_results_of_teams(team_list, style_cfg)
+	score_rows = create_rows_for_results_of_teams(tournament["team_list"], style_cfg)
 	score_rows = insert_ranking_for_results_of_teams(score_rows, style_cfg)
 
 	if os.path.exists(filename_tm_res):
-		print("the file", filename_tm_res, "already exists")
-		input("Press Enter to overwrite the file > ")
+		if not interaction_modules.overwrite("the file", filename_tm_res, "already exists"):return
 	with open(filename_tm_res, "w") as g:
 		writer = csv.writer(g)
 		for row in score_rows:
 			writer.writerow(row)
 	
-	adjudicator_score_rows = create_rows_for_results_of_adjudicators(adjudicator_list)
+	adjudicator_score_rows = create_rows_for_results_of_adjudicators(tournament["adjudicator_list"])
 	adjudicator_score_rows = insert_ranking_for_results_of_adjudicators(adjudicator_score_rows)
 
 	if os.path.exists(filename_adj_res):
-		print("the file", filename_adj_res, "already exists")
-		input("Press Enter to overwrite the file > ")
+		if not interaction_modules.overwrite("the file", filename_adj_res, "already exists"):return
 	with open(filename_adj_res, "w") as g:
 		writer = csv.writer(g)
 		for row in adjudicator_score_rows:
@@ -403,10 +413,18 @@ def export_results(team_list, adjudicator_list, filename_adj_res, filename_deb_r
 def export_teams(filename_teams, team_list, style_cfg):
 	with open(filename_teams, "w") as g:
 		writer = csv.writer(g)
-		writer.writerow(["team name"]+["name" for i in range(style_cfg["debater_num_per_team"])]+["scale", "institution1", "institution2", "institution3", "institution4", "institution5", "institution6"])
+		writer.writerow(["team name"]+["name" for i in range(style_cfg["debater_num_per_team"])]+["institution1", "institution2", "institution3", "institution4", "institution5", "institution6"])
 		for team in team_list:
-			export_row = [team.name]+[d.name for d in team.debaters]+[team.institution_scale]
+			export_row = [team.name]+[d.name for d in team.debaters]
 			export_row.extend(team.institutions)
+			writer.writerow(export_row)
+
+def export_institutions(filename_institutions, institution_list):
+	with open(filename_institutions, "w") as g:
+		writer = csv.writer(g)
+		writer.writerow(["institution name", "scale"])
+		for institution in institution_list:
+			export_row = [institution.name, institution.scale]
 			writer.writerow(export_row)
 			
 def check_results(filename, style_cfg):
@@ -425,7 +443,7 @@ def check_results(filename, style_cfg):
 		for ele in row:
 			hit = regexp.search(ele)
 			if hit is None:
-				print(("warning: results file is using unknown character(fullwidth forms or other symbols)", ele))
+				interaction_modules.warn(("warning: results file is using unknown character(fullwidth forms or other symbols)", ele))
 		results_lists.append([row[0], row[1]]+[float(row[2+i]) for i in range(positions)]+[int(row[2+positions])]+[row[3+positions+j] for j in range(team_num-1)]+[row[2+positions+team_num]])
 
 	if team_num == 4:
@@ -434,7 +452,7 @@ def check_results(filename, style_cfg):
 			teams_name_pairs = list(itertools.combinations(team_names, 2))
 			for teams_name_pair in teams_name_pairs:
 				if teams_name_pair[0] != teams_name_pair[1]:
-					print(("error in team name column, row:"+str(debater_num_per_team*i+3)))
+					interaction_modules.warn(("error in team name column, row:"+str(debater_num_per_team*i+3)))
 					return True
 
 		multi2 = {results_list[1]:0 for results_list in results_lists}
@@ -444,27 +462,27 @@ def check_results(filename, style_cfg):
 
 		for k, v in list(multi2.items()):
 			if v > 1:
-				print(("warning in debater name column, row(appears twice):"+k))
+				interaction_modules.warn(("warning in debater name column, row(appears twice):"+k))
 
 		for i, results_list in enumerate(results_lists):
 			if results_list[2:2+positions].count(0) == 0:
-				print(("warning in debater score column, row:"+str(i+3)))
+				interaction_modules.warn(("warning in debater score column, row:"+str(i+3)))
 			elif results_list[2:2+positions].count(0) == positions:
-				print(("warning in debater score column, row:"+str(i+3)))
+				interaction_modules.warn(("warning in debater score column, row:"+str(i+3)))
 
 		wins = [0 for i in range(team_num)]
 		try:
 			for i, results_list in enumerate(results_lists):
 				wins[results_list[2+positions]] += 1
 		except:
-			print(("error in win column, unexpected value, row:")+str(i+3))
-			print("Unexpected error:", sys.exc_info()[0])
+			interaction_modules.warn(("error in win column, unexpected value, row:")+str(i+3))
+			interaction_modules.warn("Unexpected error:", sys.exc_info()[0])
 			return True
 
 		wins_pairs = list(itertools.combinations(wins, 2))
 		for wins_pair in wins_pairs:
 			if wins_pair[0] != wins_pair[1]:
-				print("error in win column")
+				interaction_modules.warn("error in win column")
 				return True
 
 		if team_num == 4:
@@ -476,14 +494,14 @@ def check_results(filename, style_cfg):
 			for i, results_list in enumerate(results_lists):
 				sides[results_list[2+positions+team_num]] += 1
 		except:
-			print(("error in side column, unexpected value, row:")+str(i+3))
-			print("Unexpected error:", sys.exc_info()[0])
+			interaction_modules.warn(("error in side column, unexpected value, row:")+str(i+3))
+			interaction_modules.warn("Unexpected error:", sys.exc_info()[0])
 			return True
 
 		sides_pairs = list(itertools.combinations(list(sides.values()), 2))
 		for sides_pair in sides_pairs:
 			if sides_pair[0] != sides_pair[1]:
-				print("error in side column")
+				interaction_modules.warn("error in side column")
 				return True
 
 		if team_num == 4:
@@ -494,66 +512,90 @@ def check_results(filename, style_cfg):
 				opponents3.extend([results_list[0], results_list[3+positions], results_list[5+positions]])
 				opponents4.extend([results_list[0], results_list[3+positions], results_list[4+positions]])
 			if set(opponents1) != set(opponents2) or set(opponents1) != set(opponents3) or set(opponents1) != set(opponents4) or set(opponents2) != set(opponents3) or set(opponents2) != set(opponents4) or set(opponents3) != set(opponents4):
-				print("error in team and the opponent column")
+				interaction_modules.warn("error in team and the opponent column")
 				return Trueaa
 		else:
 			opponents = {results_list[0]:results_list[3+positions] for results_list in results_lists}
 			opponents2 = {results_list[3+positions]:results_list[0] for results_list in results_lists}
 
 			if opponents != opponents2:
-				print("error in team and the opponent column")
+				interaction_modules.warn("error in team and the opponent column")
 				return True
 
 		return False
 
-def save(adjudicator_list, venue_list, team_list, filename_teams, filename_venues, filename_adjudicators, style_cfg, workfolder_name):
-	export_filename_aj = workfolder_name+"temp/aj.csv"
-	export_filename_vn = workfolder_name+"temp/vn.csv"
-	export_filename_tm = workfolder_name+"temp/tm.csv"
+def save(tournament, fnames, style_cfg):
+	export_filename_aj = fnames["export_filename_aj"]
+	export_filename_vn = fnames["export_filename_vn"]
+	export_filename_tm = fnames["export_filename_tm"]
+	export_filename_is = fnames["export_filename_is"]
 	with open(export_filename_aj, "w") as g:
 		writer = csv.writer(g)
-		for adjudicator in adjudicator_list:
+		for adjudicator in tournament["adjudicator_list"]:
 			tf = 1 if adjudicator.absent else 0
-			export_row = [adjudicator.name, tf]
+			export_row = [adjudicator.name, tf, adjudicator.reputation, adjudicator.judge_test]
+			export_row.extend(adjudicator.institutions)
+			export_row.extend(["" for i in range(10-len(adjudicator.institutions))])
+			export_row.extend(adjudicator.conflict_teams)
 			writer.writerow(export_row)
 	with open(export_filename_vn, "w") as g:
 		writer = csv.writer(g)
-		for venue in venue_list:
+		for venue in tournament["venue_list"]:
 			tf = 1 if venue.available else 0
 			export_row = [venue.name, tf, venue.priority]
 			writer.writerow(export_row)
 	with open(export_filename_tm, "w") as g:
 		writer = csv.writer(g)
-		for team in team_list:
+		for team in tournament["team_list"]:
 			tf = 1 if team.available else 0
 			export_row = [team.name, tf]
 			export_row.extend([debater.name for debater in team.debaters])
-			export_row.append(team.institution_scale)
 			export_row.extend(team.institutions)
 			writer.writerow(export_row)
-	export_teams(filename_teams, team_list, style_cfg)
-	export_venues(filename_venues, venue_list)
-	export_adjudicators(filename_adjudicators, adjudicator_list)
+	with open(export_filename_is, "w") as g:
+		writer = csv.writer(g)
+		for institution in tournament["institution_list"]:
+			export_row = [institution.name, institution.scale]
+			writer.writerow(export_row)
+	export_teams(fnames["teams"], tournament["team_list"], style_cfg)
+	export_venues(fnames["venues"], tournament["venue_list"])
+	export_adjudicators(fnames["adjudicators"], tournament["adjudicator_list"])
+	export_institutions(fnames["institutions"], tournament["institution_list"])
 
-def load(adjudicator_list, venue_list, team_list, style_cfg, workfolder_name):
-	export_filename_aj = workfolder_name+"temp/aj.csv"
-	export_filename_vn = workfolder_name+"temp/vn.csv"
-	export_filename_tm = workfolder_name+"temp/tm.csv"
+def load(tournament, style_cfg, fnames):
+	export_filename_aj = fnames["export_filename_aj"]
+	export_filename_vn = fnames["export_filename_vn"]
+	export_filename_tm = fnames["export_filename_tm"]
+	export_filename_is = fnames["export_filename_is"]
 	debater_num_per_team = style_cfg["debater_num_per_team"]
 	try:
+		f = open(export_filename_is, 'r')
+		reader = csv.reader(f)
+		for row in reader:
+			for institution in tournament["institution_list"]:
+				if row[0] != institution.name:
+					break
+			else:
+				new_institution = Institution(len(tournament["institution_list"]), row[0], row[1])
+				tournament["institution_list"].append(new_institution)
+
 		f = open(export_filename_aj, 'r')
 		reader = csv.reader(f)
 		for row in reader:
-			for adjudicator in adjudicator_list:
+			for adjudicator in tournament["adjudicator_list"]:
 				if row[0] == adjudicator.name:
 					if int(row[1]) == 1:
 						adjudicator.absent = True
 					else:
 						adjudicator.absent = False
+			else:
+				new_adj = Adjudicator(len(tournament["adjudicator_list"]), row[0], row[2], row[3], row[4:14], row[14:])
+				new_adj.absent = True if int(row[1]) == 1 else False
+				tournament["institution_list"].append(new_institution)
 		f = open(export_filename_vn, 'r')
 		reader = csv.reader(f)
 		for row in reader:
-			for venue in venue_list:
+			for venue in tournament["venue_list"]:
 				if row[0] == venue.name:
 					if int(row[1]) == 1:
 						venue.available = True
@@ -562,13 +604,13 @@ def load(adjudicator_list, venue_list, team_list, style_cfg, workfolder_name):
 					venue.priority = int(row[2])
 					break
 			else:
-				new_venue = Venue(row[0], row[2])
+				new_venue = Venue(len(tournament["venue_list"]), row[0], row[2])
 				new_venue.available = True if int(row[1]) == 1 else False
-				venue_list.append(new_venue)
+				tournament["venue_list"].append(new_venue)
 		f = open(export_filename_tm, 'r')
 		reader = csv.reader(f)
 		for row in reader:
-			for team in team_list:
+			for team in tournament["team_list"]:
 				if row[0] == team.name:
 					if int(row[1]) == 1:
 						team.available = True
@@ -576,9 +618,10 @@ def load(adjudicator_list, venue_list, team_list, style_cfg, workfolder_name):
 						team.available = False
 					break
 			else:
-				new_team = Team(len(team_list), row[0], [row[2+i] for i in range(debater_num_per_team)], row[2+debater_num_per_team], row[3+debater_num_per_team:])
+				institutions = [institution for institution in tournament["institution_list"] if institution.name in [ele.strip() for ele in row[2+debater_num_per_team:]]]
+				new_team = Team(len(tournament["team_list"]), row[0], [row[2+i] for i in range(debater_num_per_team)], institutions)
 				new_team.available = True if int(row[1]) == 1 else False
-				team_list.append(new_team)
+				tournament["team_list"].append(new_team)
 	except:
 		pass
 		"""
@@ -611,8 +654,8 @@ def read_venues(filename):
 	f = open(filename, 'r')
 	reader = csv.reader(f)
 	header = next(reader)
-	for row in reader:
-		venue_list.append(Venue(row[0], int(row[1])))
+	for j, row in enumerate(reader):
+		venue_list.append(Venue(j, row[0], int(row[1])))
 	return venue_list
 
 def read_adjudicators(filename):
@@ -643,15 +686,15 @@ def read_results_of_adj(filename, teamnum):
 		results.append(data_row)
 	return results
 
-def read_and_process_result_adj(round_num, team_list, adjudicator_list, teamnum, filename_results_of_adj):
+def read_and_process_result_adj(round_num, tournament, teamnum, filename_results_of_adj):
 	if check_results_of_adj(filename_results_of_adj, teamnum):
-		print("Results of adj file broken")
+		interaction_modules.warn("Results of adj file broken")
 		raise NameError('Results file broken')
 	results_of_adj_list = read_results_of_adj(filename_results_of_adj, teamnum)
 
 	adjudicator_temp = []
 	for results_of_adj in results_of_adj_list:
-		for adjudicator in adjudicator_list:
+		for adjudicator in tournament["adjudicator_list"]:
 			if adjudicator.name == results_of_adj[0]:
 				if results_of_adj[1:4+teamnum].count(0) == 3+teamnum:
 					score = 0
@@ -659,11 +702,11 @@ def read_and_process_result_adj(round_num, team_list, adjudicator_list, teamnum,
 					score = float(sum(results_of_adj[1:4+teamnum]))/(3+teamnum-results_of_adj[1:4+teamnum].count(0))
 				teams = []
 				for j in range(teamnum):
-					for team in team_list:
+					for team in tournament["team_list"]:
 						if team.name == results_of_adj[4+teamnum+j]:
 							teams.append(team)
 				if len(teams) != teamnum:
-					print("results_of_adj file broken", str(teams))
+					interaction_modules.warn("results_of_adj file broken", str(teams))
 					break
 				else:
 					if results_of_adj[3+teamnum] == 0:
@@ -676,7 +719,7 @@ def read_and_process_result_adj(round_num, team_list, adjudicator_list, teamnum,
 	for k, adjudicator in enumerate(adjudicator_temp):
 		adjudicator.watched_debate_ranks.append(k+1)
 		adjudicator.watched_debate_ranks_sub.append(k+1)
-	rest_adjudicator_list = [adjudicator for adjudicator in adjudicator_list if adjudicator not in adjudicator_temp]
+	rest_adjudicator_list = [adjudicator for adjudicator in tournament["adjudicator_list"] if adjudicator not in adjudicator_temp]
 	for adj in rest_adjudicator_list:
 		adj.watched_debate_ranks_sub.append('n/a')
 
@@ -686,8 +729,7 @@ def read_and_process_result_adj(round_num, team_list, adjudicator_list, teamnum,
 def export_random_result_adj(allocations, round_num, style_cfg, filename):
 	teamnum = style_cfg["team_num"]
 	if os.path.exists(filename):
-		print("the file", filename, "already exists")
-		input("Press Enter to overwrite the file > ")
+		if not interaction_modules.overwrite("the file", filename, "already exists"):return
 	with open(filename, "w") as g:
 		writer = csv.writer(g)
 		if teamnum == 4:
@@ -774,8 +816,8 @@ def export_blank_results_of_adj(allocations, round_num, filename):
 	if len(allocations[0].grid.teams) == 2:
 
 		if os.path.exists(filename):
-			print("the file", filename, "already exists")
-			input("Press Enter to overwrite the file > ")
+			if not interaction_modules.overwrite("the file", filename, "already exists"):return
+
 		with open(filename, "w") as g:
 			writer = csv.writer(g)
 			writer.writerow(["name", "R"+str(round_num)+" team1", "R"+str(round_num)+" team2", "R"+str(round_num)+" panel1", "R"+str(round_num)+" panel2", "R"+str(round_num)+" chair", "team1", "team2"])
@@ -792,8 +834,7 @@ def export_blank_results_of_adj(allocations, round_num, filename):
 	else:
 
 		if os.path.exists(filename):
-			print("the file", filename, "already exists")
-			input("Press Enter to overwrite the file > ")
+			if not interaction_modules.overwrite("the file", filename, "already exists"):return
 		with open(filename, "w") as g:
 			writer = csv.writer(g)
 			writer.writerow(["name", "R"+str(round_num)+" og", "R"+str(round_num)+" oo", "R"+str(round_num)+" cg", "R"+str(round_num)+" co", "R"+str(round_num)+" panel1", "R"+str(round_num)+" panel2", "R"+str(round_num)+" chair", "team1", "team2", "team3", "team4"])
@@ -902,8 +943,8 @@ def export_matchups(matchups, exportcode, round_num, workfolder_name):
 	export_filename = workfolder_name+"temp/matchups_for_round_"+str(round_num)+"_"+str(exportcode)+".csv"
 
 	if os.path.exists(export_filename):
-		print("the file", export_filename, "already exists")
-		input("Press Enter to overwrite the file > ")
+		if not interaction_modules.overwrite("the file", export_filename, "already exists"):return
+
 	with open(export_filename, "w") as g:
 		writer = csv.writer(g)
 		if len(matchups[0].teams) == 2:
@@ -919,7 +960,7 @@ def export_matchups(matchups, exportcode, round_num, workfolder_name):
 def export_allocations(allocations, exportcode, round_num, workfolder_name):
 	export_filename = workfolder_name+"temp/matchups_for_round_"+str(round_num)+"_"+str(exportcode)+".csv"
 	if os.path.exists(export_filename):
-		print("the file", export_filename, "already exists")
+		if not interaction_modules.overwrite("the file", export_filename, "already exists"):return
 		input("Press Enter to overwrite the file > ")
 	if len(allocations[0].grid.teams) == 2:
 		with open(export_filename, "w") as g:
@@ -967,8 +1008,8 @@ def export_allocations(allocations, exportcode, round_num, workfolder_name):
 def export_official_matchups(allocations, round_num, workfolder_name):
 	export_filename = workfolder_name+"public/matchups_for_round_"+str(round_num)+".csv"
 	if os.path.exists(export_filename):
-		print("the file", export_filename, "already exists")
-		input("Press Enter to overwrite the file > ")
+		if not interaction_modules.overwrite("the file", export_filename, "already exists"):return
+
 	if len(allocations[0].grid.teams) == 2:
 		with open(export_filename, "w") as g:
 			writer = csv.writer(g)
@@ -1132,7 +1173,7 @@ def check_results_of_adj(filename, teamnum):
 			for ele in row:
 				hit = regexp.search(ele)
 				if hit is None:
-					print(("warning: results of adj file is using unknown character(fullwidth forms or other symbols)", ele))
+					interaction_modules.warn(("warning: results of adj file is using unknown character(fullwidth forms or other symbols)", ele))
 			results_lists.append([row[0], int(row[1]), int(row[2]), int(row[3]), int(row[4]), int(row[5]), row[6], row[7]])
 
 		multi2 = {results_list[0]:0 for results_list in results_lists}
@@ -1142,14 +1183,14 @@ def check_results_of_adj(filename, teamnum):
 
 		for k, v in list(multi2.items()):
 			if v > 1:
-				print(("error in adjudicator name column, row(appears twice):"+k))
+				interaction_modules.warn(("error in adjudicator name column, row(appears twice):"+k))
 				return True
 
 		teams = {results_list[6]:results_list[7] for results_list in results_lists}
 
 		for results_list in results_lists:
 			if teams[results_list[6]] != results_list[7]:
-				print(("error in team columns:"+str(results_list[6])))
+				interaction_modules.warn(("error in team columns:"+str(results_list[6])))
 				return True
 
 		two_teams_list = []
@@ -1163,7 +1204,7 @@ def check_results_of_adj(filename, teamnum):
 
 		for team in teams:
 			if teams.count(team) > 1:
-				print(("error in team columns:"+team))
+				interaction_modules.warn(("error in team columns:"+team))
 				return True
 
 		return False
@@ -1179,7 +1220,7 @@ def check_results_of_adj(filename, teamnum):
 			for ele in row:
 				hit = regexp.search(ele)
 				if hit is None:
-					print(("warning: results of adj file is using unknown character(fullwidth forms or other symbols)", ele))
+					interaction_modules.warn(("warning: results of adj file is using unknown character(fullwidth forms or other symbols)", ele))
 			results_lists.append([row[0], int(row[1]), int(row[2]), int(row[3]), int(row[4]), int(row[5]), int(row[6]), int(row[7]), row[8], row[9], row[10], row[11]])
 
 		multi2 = {results_list[0]:0 for results_list in results_lists}
@@ -1189,7 +1230,7 @@ def check_results_of_adj(filename, teamnum):
 
 		for k, v in list(multi2.items()):
 			if v > 1:
-				print(("error in adjudicator name column, row(appears twice):"+k))
+				interaction_modules.warn(("error in adjudicator name column, row(appears twice):"+k))
 				time.sleep(5)
 				#return True
 
@@ -1197,7 +1238,7 @@ def check_results_of_adj(filename, teamnum):
 
 		for results_list in results_lists:
 			if teams[results_list[8]] != [results_list[9], results_list[10], results_list[11]]:
-				print(("error in team columns:"+str(results_list[8])))
+				interaction_modules.warn(("error in team columns:"+str(results_list[8])))
 				time.sleep(5)
 				#return True
 
@@ -1212,7 +1253,7 @@ def check_results_of_adj(filename, teamnum):
 
 		for team in teams:
 			if teams.count(team) > 1:
-				print(("error in team columns:"+team))
+				interaction_modules.warn(("error in team columns:"+team))
 				time.sleep(5)
 				#return True
 

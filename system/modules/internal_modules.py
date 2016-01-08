@@ -3,6 +3,7 @@ import random
 import time
 import itertools
 import collections
+from . import interaction_modules
 import re
 try:
 	import readline
@@ -17,7 +18,7 @@ from .filter_modules import *
 from .select_modules import *
 from .io_modules import *
 
-def merge_matchups_and_allocations(matchups, allocations, lattice_list, round_num, adjudicator_list, constants_of_adj, teamnum):
+def merge_matchups_and_allocations(matchups, allocations, lattice_list, round_num, tournament, constants_of_adj, teamnum):
 	new_allocations = [[], None]
 	for grid, lattice in zip(matchups[0], allocations[0]):
 		new_lattice = find_lattice_from_lattice_list(lattice_list, grid.teams, lattice.chair)
@@ -25,18 +26,18 @@ def merge_matchups_and_allocations(matchups, allocations, lattice_list, round_nu
 		new_lattice.venue = lattice.venue
 		new_allocations[0].append(new_lattice)
 
-	selected_lattice_list_info = return_lattice_list_info(new_allocations[0], adjudicator_list, constants_of_adj, round_num, "", teamnum)
+	selected_lattice_list_info = return_lattice_list_info(new_allocations[0], tournament, constants_of_adj, round_num, "", teamnum)
 	selected_lattice_list_info.allocation_no = 1
 	new_allocations[1] = selected_lattice_list_info
 
 	return new_allocations
 
-def import_matchup(filename_matchup, grid_list, team_list, adjudicator_list, venue_list, teamnum):
+def import_matchup(filename_matchup, grid_list, tournament, teamnum):
 	selected_lattice_list = []
 	try:
 		raw_data_rows = read_matchup(filename_matchup, teamnum)
 	except:
-		print("Unexpected error:", sys.exc_info()[0])
+		interaction_modules.warn("Unexpected error:", sys.exc_info()[0])
 		raise Exception("error: the matchups to import must be '"+filename_matchup+"'")
 
 	for row in raw_data_rows:
@@ -47,14 +48,14 @@ def import_matchup(filename_matchup, grid_list, team_list, adjudicator_list, ven
 		teams = []
 		lattice = None
 		for i in range(teamnum):
-			for team in team_list:
+			for team in tournament["team_list"]:
 				if team.name == row[i]:
 					teams.append(team)
 					break
 		if len(teams) != teamnum:
 			raise Exception("error: cannot read teams ["+str(row[:teamnum])+"] in matchup")
 
-		for adjudicator in adjudicator_list:
+		for adjudicator in tournament["team_list"]:
 			if row[teamnum] == adjudicator.name:
 				chair = adjudicator
 				break
@@ -62,21 +63,21 @@ def import_matchup(filename_matchup, grid_list, team_list, adjudicator_list, ven
 			raise Exception("error: cannot read chair ["+row[teamnum]+"] in matchup")
 
 		if row[1+teamnum]:
-			for adjudicator in adjudicator_list:
+			for adjudicator in tournament["team_list"]:
 				if row[1+teamnum] == adjudicator.name:
 					panels.append(adjudicator)
 					break
 			else:
 				raise Exception("error: cannot read panel ["+row[1+teamnum]+"] in matchup")
 		if row[2+teamnum]:
-			for adjudicator in adjudicator_list:
+			for adjudicator in tournament["team_list"]:
 				if row[2+teamnum] == adjudicator.name:
 					panels.append(adjudicator)
 					break
 			else:
 				raise Exception("error: cannot read panel ["+row[2+teamnum]+"] in matchup")
 		if row[3+teamnum]:
-			for venue2 in venue_list:
+			for venue2 in tournament["venue_list"]:
 				if venue2.name == row[3+teamnum]:
 					venue = venue2
 					break
@@ -96,20 +97,20 @@ def import_matchup(filename_matchup, grid_list, team_list, adjudicator_list, ven
 
 	return selected_lattice_list
 
-def checks_before_creation(adjudicator_list, venue_list, team_list, teamnum):
-	adj_available_num = len([adj for adj in adjudicator_list if not adj.absent])
-	venue_available_num = len([venue for venue in venue_list if venue.available])
-	team_available_num = len([team for team in team_list if team.available])
-	print("Available Adjudicators: {0:d}, Available Venues: {1:d}, Available Teams: {2:d}".format(adj_available_num, venue_available_num, team_available_num))
+def checks_before_creation(tournament, teamnum):
+	adj_available_num = len([adj for adj in tournament["adjudicator_list"] if not adj.absent])
+	venue_available_num = len([venue for venue in tournament["venue_list"] if venue.available])
+	team_available_num = len([team for team in tournament["team_list"] if team.available])
+	interaction_modules.progress("Available Adjudicators: {0:d}, Available Venues: {1:d}, Available Teams: {2:d}".format(adj_available_num, venue_available_num, team_available_num))
 
 	if adj_available_num < team_available_num/teamnum:
-		print("need more adjudicators")
+		interaction_modules.warn("need more adjudicators")
 		return False
 	if venue_available_num < team_available_num/teamnum:
-		print("need more venues")
+		interaction_modules.warn("need more venues")
 		return False
 	if team_available_num % teamnum != 0:
-		print("the number of teams is not suitable for creating matchups")
+		interaction_modules.warn("the number of teams is not suitable for creating matchups")
 		return False
 
 	return True
@@ -117,84 +118,39 @@ def checks_before_creation(adjudicator_list, venue_list, team_list, teamnum):
 def addpriority(grid_list):
 	all_len = len(grid_list)
 	for p, grid in enumerate(grid_list):
-
-		for k, bit in enumerate(eachbit(grid.adoptbits)):
-			if bit == 0:
-				grid.adoptness1 = k
-				break
-
-		count = 0
-		for k, bit in enumerate(eachbit(grid.adoptbits)):
-			if bit == 1:
-				count += 1
-		grid.adoptness2 = count
-
-		for k, bit in enumerate(eachbit(grid.adoptbitslong)):
-			if bit == 0:
-				grid.adoptness1long = k
-				break
-
-		count = 0
-		for k, bit in enumerate(eachbit(grid.adoptbitslong)):
-			if bit == 1:
-				count += 1
-		grid.adoptness2long = count
-
-		for k, bit in enumerate(eachbit(grid.adoptbits_strict)):
-			if bit == 0:
-				grid.adoptness_strict1 = k
-				break
-
-		count = 0
-		for k, bit in enumerate(eachbit(grid.adoptbits_strict)):
-			if bit == 1:
-				count += 1
-		grid.adoptness_strict2 = count
-
-		count = 0
-		for k, bit in enumerate(eachbit(grid.adoptbits_strict)):
-			if bit == 1:
-				count += 1-k*0.04
-		grid.adoptness_weight1 = count
-
-		count = 0
-		for k, bit in enumerate(eachbit(grid.adoptbitslong)):
-			if bit == 1:
-				count += 1-k*0.04
-		grid.adoptness_weight2 = count
-
-		progress_bar2(p+1, all_len)
-	print()
+		grid.set_adoptness()
+		interaction_modules.progress_bar2(p+1, all_len)
+	interaction_modules.progress("")
 
 def check_adjudicator_list(adjudicator_list):
 	adjudicators_names = [adjudicator.name for adjudicator in adjudicator_list]
 	for adjudicator_name in adjudicators_names:
 		if adjudicators_names.count(adjudicator_name) > 1:
-			print("error : same adjudicator appears :", adjudicator_name)
+			interaction_modules.warn("error : same adjudicator appears :", adjudicator_name)
 			time.sleep(5)
 
 def check_team_list(team_list):
 	team_names = [team.name for team in team_list]
 	for team_name in team_names:
 		if team_names.count(team_name) > 1:
-			print("error : same team appears :", team_name)
+			interaction_modules.warn("error : same team appears :", team_name)
 			time.sleep(5)
 
 	for team in team_list:
-		if not(team.institution_scale == "c" or team.institution_scale == "a" or team.institution_scale == "b"):
-			print("error : team scale broken", team_name)
+		if not("c" in [insti.scale for insti in team.institutions] or "a" in [insti.scale for insti in team.institutions] or "b" in [insti.scale for insti in team.institutions]):
+			interaction_modules.warn("error : team scale broken", team_name)
 			time.sleep(5)
 
-def initial_check(team_list, venue_list, adjudicator_list, filter_lists, filter_of_adj_lists, constants, constants_of_adj, style_cfg):
+def initial_check(tournament, filter_lists, filter_of_adj_lists, constants, constants_of_adj, style_cfg):
 	teamnum = style_cfg["team_num"]
 	if len(constants) != len(constants_of_adj):
-		print("error : settings of adjudicators and tournament don't match")
+		interaction_modules.warn("error : settings of adjudicators and tournament don't match")
 		time.sleep(1)
-	if len(venue_list) < len(team_list)/float(teamnum):
-		print("error : few rooms")
+	if len(tournament["venue_list"]) < len(tournament["team_list"])/float(teamnum):
+		interaction_modules.warn("error : few rooms")
 		time.sleep(1)
-	if len(team_list)/float(teamnum) > len(adjudicator_list):
-		print("error : few adjudicators")
+	if len(tournament["team_list"])/float(teamnum) > len(tournament["adjudicator_list"]):
+		interaction_modules.warn("error : few adjudicators")
 		time.sleep(1)
 
 def sort_adjudicator_list_by_score(adjudicator_list):
@@ -203,31 +159,20 @@ def sort_adjudicator_list_by_score(adjudicator_list):
 		adjudicator.ranking = rank+1
 
 def create_lattice_list(matchups, adjudicator_list):
-	if len(matchups[0].teams) == 2:
-		lattice_list = []
-		for grid in matchups:
-			for chair in adjudicator_list:
-				lattice_list.append(Lattice(grid, chair))
+	lattice_list = []
+	for grid in matchups:
+		for chair in adjudicator_list:
+			lattice_list.append(Lattice(grid, chair))
 
-		for lattice in lattice_list:
-			if not(lattice.grid.teams[0].available) or not(lattice.grid.teams[1].available) or lattice.chair.absent:
-				lattice.available = False
-		return lattice_list
-	else:
-		lattice_list = []
-		for grid in matchups:
-			for chair in adjudicator_list:
-				lattice_list.append(Lattice(grid, chair))
+	for lattice in lattice_list:
+		if False in [t.available for t in lattice.grid.teams] or lattice.chair.absent:
+			lattice.available = False
+	return lattice_list
 
-		for lattice in lattice_list:
-			if not(lattice.grid.teams[0].available) or not(lattice.grid.teams[1].available) or not(lattice.grid.teams[2].available) or not(lattice.grid.teams[3].available) or lattice.chair.absent:
-				lattice.available = False
-		return lattice_list
-
-def return_lattice_list_info(selected_lattice_list, adjudicator_list, constants_of_adj, round_num, comment, teamnum):
+def return_lattice_list_info(selected_lattice_list, tournament, constants_of_adj, round_num, comment, teamnum):
 	selected_lattice_list_with_info = Lattice_list_info()
 	lattice_list_checks(selected_lattice_list, constants_of_adj, round_num)
-	errors = lattice_list_errors(selected_lattice_list, adjudicator_list, round_num)
+	errors = lattice_list_errors(selected_lattice_list, tournament, round_num)
 	selected_lattice_list_with_info.large_warnings.extend(errors)
 	for lattice in selected_lattice_list:
 		selected_lattice_list_with_info.large_warnings.extend(lattice.large_warnings)
@@ -239,71 +184,32 @@ def return_lattice_list_info(selected_lattice_list, adjudicator_list, constants_
 
 	return selected_lattice_list_with_info
 
-def return_selected_lattice_lists(lattice_list, round_num, team_list, adjudicator_list, constants_of_adj, teamnum):
+def return_selected_lattice_lists(lattice_list, round_num, tournament, constants_of_adj, teamnum):
 	selected_lattice_lists_with_info = []
 	alg_list = [select_alg_adj2, select_alg_adj11, select_alg_adj13, select_alg_adj14]
 	selected_lattice_lists = []
 
+	cp1_small = lambda g: g.adoptness1
+	cp2_small = lambda g: g.adoptness2
+	cp1_strict = lambda g: g.adoptness_strict1
+	cp2_strict = lambda g: g.adoptness_strict2
+	cp1_long = lambda g: g.adoptness1long
+	cp2_long = lambda g: g.adoptness2long
+	cp1_weight = lambda g: g.adoptness_weight1
+	cp2_weight = lambda g: g.adoptness_weight2
+
+	cp_pair_list = [(cp1_small, cp2_small), (cp2_small, cp1_small), (cp1_long, cp2_long), (cp2_long, cp1_long), (cp1_strict, cp2_strict), (cp2_strict, cp1_strict), (cp1_weight, cp2_weight), (cp2_weight, cp1_weight)]
+
+
 	entire_length = len(alg_list) * 8
 	c = 1
-	for lattice in lattice_list:
-		lattice.comparison1 = lattice.adoptness1
-		lattice.comparison2 = lattice.adoptness2
-	for alg in alg_list:
-		progress_bar2(c, entire_length)
-		c+=1
-		selected_lattice_lists.append(alg(lattice_list, round_num, team_list))
+	for cp_pair in cp_pair_list:
+		for alg in alg_list:
+			interaction_modules.progress_bar2(c, entire_length)
+			c+=1
+			selected_lattice_lists.append(alg(lattice_list, round_num, tournament["adjudicator_list"], cp_pair))
 	
-	for lattice in lattice_list:
-		lattice.comparison1 = lattice.adoptness1long
-		lattice.comparison2 = lattice.adoptness2long
-	for alg in alg_list:
-		progress_bar2(c, entire_length)
-		c+=1
-		selected_lattice_lists.append(alg(lattice_list, round_num, team_list))
-	for lattice in lattice_list:
-		lattice.comparison1 = lattice.adoptness2
-		lattice.comparison2 = lattice.adoptness1
-	for alg in alg_list:
-		progress_bar2(c, entire_length)
-		c+=1
-		selected_lattice_lists.append(alg(lattice_list, round_num, team_list))
-	for lattice in lattice_list:
-		lattice.comparison1 = lattice.adoptness2long
-		lattice.comparison2 = lattice.adoptness1long
-	for alg in alg_list:
-		progress_bar2(c, entire_length)
-		c+=1
-		selected_lattice_lists.append(alg(lattice_list, round_num, team_list))
-	for lattice in lattice_list:
-		lattice.comparison1 = lattice.adoptness_strict1
-		lattice.comparison2 = lattice.adoptness_strict2
-	for alg in alg_list:
-		progress_bar2(c, entire_length)
-		c+=1
-		selected_lattice_lists.append(alg(lattice_list, round_num, team_list))
-	for lattice in lattice_list:
-		lattice.comparison1 = lattice.adoptness_strict2
-		lattice.comparison2 = lattice.adoptness_strict1
-	for alg in alg_list:
-		progress_bar2(c, entire_length)
-		c+=1
-		selected_lattice_lists.append(alg(lattice_list, round_num, team_list))
-	for lattice in lattice_list:
-		lattice.comparison1 = lattice.adoptness_weight1
-		lattice.comparison2 = lattice.adoptness_weight2
-	for alg in alg_list:
-		progress_bar2(c, entire_length)
-		c+=1
-		selected_lattice_lists.append(alg(lattice_list, round_num, team_list))
-	for lattice in lattice_list:
-		lattice.comparison1 = lattice.adoptness_weight2
-		lattice.comparison2 = lattice.adoptness_weight1
-	for alg in alg_list:
-		progress_bar2(c, entire_length)
-		c+=1
-		selected_lattice_lists.append(alg(lattice_list, round_num, team_list))
-	print()
+	interaction_modules.progress("")
 
 	for selected_lattice_list in selected_lattice_lists:
 		selected_lattice_list.sort(key=lambda lattice: lattice.__hash__())
@@ -314,26 +220,26 @@ def return_selected_lattice_lists(lattice_list, round_num, team_list, adjudicato
 			selected_lattice_lists2.append(selected_lattice_list)
 
 	for k, selected_lattice_list in enumerate(selected_lattice_lists2):
-		selected_lattice_list_with_info = return_lattice_list_info(selected_lattice_list, adjudicator_list, constants_of_adj, round_num, "", teamnum)
+		selected_lattice_list_with_info = return_lattice_list_info(selected_lattice_list, tournament, constants_of_adj, round_num, "", teamnum)
 		selected_lattice_lists_with_info.append([selected_lattice_list, selected_lattice_list_with_info])
 
 	selected_lattice_lists_with_info.sort(key=lambda selected_lattice_list: selected_lattice_list[1].strong_strong_indicator, reverse=True)
 			
 	return selected_lattice_lists_with_info
 
-def lattice_filtration(adjudicator_list, selected_grid_list, team_list, lattice_list, break_team_num, round_num, filter_lists):#max_filters = 20
+def lattice_filtration(tournament, selected_grid_list, lattice_list, break_team_num, round_num, filter_lists):#max_filters = 20
 	#for i in range(9):
 	#	filter1(grid_list, i)
 	#function_list = [random_allocation, prevent_str_wek_round, prevent_unfair_adjudicators, prevent_conflicts, avoid_watched_teams, prioritize_bubble_round]
 	function_list = filter_lists[round_num-1]
 	#random.shuffle(function_list)
 	for k, function in enumerate(function_list):
-		progress_bar2(k+1, len(function_list))
-		function(round_num, adjudicator_list, selected_grid_list, team_list, lattice_list, break_team_num, k)
+		interaction_modules.progress_bar2(k+1, len(function_list))
+		function(round_num, tournament, selected_grid_list, lattice_list, break_team_num, k)
 		#show_adoptbits_lattice(adjudicator_list, lattice_list, k)
 		#print
 		#show_adoptbitslong_lattice(adjudicator_list, lattice_list, k)
-	print()
+	interaction_modules.progress("")
 
 def create_grid_list(team_list, teamnum):
 	grid_list = []
@@ -377,7 +283,7 @@ def create_grid_list(team_list, teamnum):
 		#				grid_list.append(Grid([team1, team2, team3, team4]))
 		len_bundle = len(bundle_list)
 		for j, bundle in enumerate(bundle_list):
-			progress_bar2(j+1, len_bundle)
+			interaction_modules.progress_bar2(j+1, len_bundle)
 			grid_list.append(Grid(list(bundle)))
 		print
 
@@ -393,7 +299,7 @@ def create_grid_list(team_list, teamnum):
 	len_bundle = len(bundle_list)
 	for j, bundle in enumerate(bundle_list):
 		team_lists = list(itertools.permutations(bundle, teamnum))
-		progress_bar2(j+1, len_bundle)
+		interaction_modules.progress_bar2(j+1, len_bundle)
 		for team_list_for_grid in team_lists:
 			grid_list.append(Grid(list(team_list_for_grid)))
 	print
@@ -405,20 +311,20 @@ def create_grid_list(team_list, teamnum):
 	return grid_list
 	"""
 
-def filtration(grid_list, round_num, team_list, filter_lists):#max_filters = 20
+def filtration(grid_list, round_num, tournament, filter_lists):#max_filters = 20
 	#for i in range(9):
 	#	filter1(grid_list, i)
 	#function_list = [power_pairing, prevent_same_institution_small, prevent_same_opponent, prevent_same_institution_middle, prevent_unfair_side, prevent_same_institution_large, random_pairing]
 	function_list = filter_lists[round_num-1]
 	#random.shuffle(function_list)
 	for k, function in enumerate(function_list):
-		progress_bar2(k+1, len(function_list))
-		function(grid_list, round_num, team_list, k)
+		interaction_modules.progress_bar2(k+1, len(function_list))
+		function(grid_list, round_num, tournament["team_list"], k)
 		#print str(function)#passpass
 		#show_adoptbits(team_list, grid_list, k)
 		#print
 		#show_adoptbitslong(team_list, grid_list, k)
-	print()
+	interaction_modules.progress("")
 
 def find_grid_from_grid_list(grid_list, teams):
 	for grid in grid_list:
@@ -443,24 +349,38 @@ def multi(selected_grid_list, selected_grid_lists2):
 		if same: return True
 	return False
 
-def return_selected_grid_lists(grid_list, round_num, team_list, teamnum):
+def return_selected_grid_lists(grid_list, round_num, tournament, teamnum):
 	if len(grid_list[0].teams) == 2:
 		alg_list = [select_alg2, select_alg3, select_alg4, select_alg11, select_alg13, select_alg14]
 	else:
-		alg_list = [select_alg2, select_alg4, select_alg11, select_alg13, select_alg14]
+		if len(grid_list) > 25**2:
+			alg_list = []
+		else:
+			alg_list = [select_alg2, select_alg4, select_alg11, select_alg13, select_alg14]
+
+	cp1_small = lambda g: g.adoptness1
+	cp2_small = lambda g: g.adoptness2
+	cp1_strict = lambda g: g.adoptness_strict1
+	cp2_strict = lambda g: g.adoptness_strict2
+	cp1_long = lambda g: g.adoptness1long
+	cp2_long = lambda g: g.adoptness2long
+	cp1_weight = lambda g: g.adoptness_weight1
+	cp2_weight = lambda g: g.adoptness_weight2
+
+	cp_pair_list = [(cp1_small, cp2_small), (cp2_small, cp1_small), (cp1_long, cp2_long), (cp2_long, cp1_long), (cp1_strict, cp2_strict), (cp2_strict, cp1_strict), (cp1_weight, cp2_weight), (cp2_weight, cp1_weight)]
 
 	selected_grid_lists = []
 	selected_grid_lists_with_info = []
 
-	progress("creating special matchups")
+	interaction_modules.progress("creating special matchups")
 	c = 1
 	entire_length = 5
 	if len(grid_list[0].teams) == 4:#add extra matchups
 		def add_extra_matchups(pickup, divide_team_list_by_4, decide_position, comment, teamnum):
-			selected_grid_list_wudc = return_selected_grid_list_wudc(grid_list, team_list, pickup, divide_team_list_by_4, decide_position)
-			selected_grid_list_info = return_grid_list_info(selected_grid_list_wudc, team_list, round_num, comment, teamnum)
+			selected_grid_list_wudc = return_selected_grid_list_wudc(grid_list, tournament["team_list"], pickup, divide_team_list_by_4, decide_position)
+			selected_grid_list_info = return_grid_list_info(selected_grid_list_wudc, tournament["team_list"], round_num, comment, teamnum)
 			selected_grid_list_wudc2 = side_revision(grid_list, selected_grid_list_wudc)
-			selected_grid_list_info2 = return_grid_list_info(selected_grid_list_wudc2, team_list, round_num, comment+" side-rev", teamnum)
+			selected_grid_list_info2 = return_grid_list_info(selected_grid_list_wudc2, tournament["team_list"], round_num, comment+" side-rev", teamnum)
 			#selected_grid_list_wudc3 = side_revision(grid_list, selected_grid_list_wudc2)
 			#selected_grid_list_info3 = return_grid_list_info(selected_grid_list_wudc3, team_list, round_num, comment+" side-rev2")
 			selected_grid_lists_with_info.append([selected_grid_list_wudc, selected_grid_list_info])
@@ -468,86 +388,32 @@ def return_selected_grid_lists(grid_list, round_num, team_list, teamnum):
 			#selected_grid_lists_with_info.append([selected_grid_list_wudc3, selected_grid_list_info3])
 
 		add_extra_matchups(pickup_random, divide_team_list_by_4_random, decide_position_random, "WUDC RULE RANDOM", teamnum)
-		progress_bar2(c, entire_length)
+		interaction_modules.progress_bar2(c, entire_length)
 		c += 1
 		add_extra_matchups(pickup_random, divide_team_list_by_4_score, decide_position_fair, "WUDC RULE CUSTOMIZED (For Atournament)", teamnum)
-		progress_bar2(c, entire_length)
+		interaction_modules.progress_bar2(c, entire_length)
 		c += 1
 		add_extra_matchups(pickup_pull_up, divide_team_list_by_4_score, decide_position_fair, "WUDC RULE CUSTOMIZED pull up", teamnum)
-		progress_bar2(c, entire_length)
+		interaction_modules.progress_bar2(c, entire_length)
 		c += 1
 		add_extra_matchups(pickup_pull_down, divide_team_list_by_4_score, decide_position_fair, "WUDC RULE CUSTOMIZED pull down", teamnum)
-		progress_bar2(c, entire_length)
+		interaction_modules.progress_bar2(c, entire_length)
 		c += 1
 		add_extra_matchups(pickup_pull_up, divide_team_list_by_4_half, decide_position_fair, "WUDC RULE CUSTOMIZED position", teamnum)
-		progress_bar2(c, entire_length)
+		interaction_modules.progress_bar2(c, entire_length)
 		c += 1
-	print()
+	interaction_modules.progress("")
 
 	entire_length = len(alg_list) * 8
 	c = 1
-	
-	for grid in grid_list:
-		grid.comparison1 = grid.adoptness1long
-		grid.comparison2 = grid.adoptness2long
-	for alg in alg_list:
-		progress_bar2(c, entire_length)
-		c+=1
-		selected_grid_lists.append(alg(grid_list, round_num, team_list))
-	"""
-	for grid in grid_list:
-		grid.comparison1 = grid.adoptness1
-		grid.comparison2 = grid.adoptness2
-	for alg in alg_list:
-		progress_bar2(c, entire_length)
-		c+=1
-		selected_grid_lists.append(alg(grid_list, round_num, team_list))
-	for grid in grid_list:
-		grid.comparison1 = grid.adoptness2
-		grid.comparison2 = grid.adoptness1
-	for alg in alg_list:
-		progress_bar2(c, entire_length)
-		c+=1
-		selected_grid_lists.append(alg(grid_list, round_num, team_list))
-	for grid in grid_list:
-		grid.comparison1 = grid.adoptness2long
-		grid.comparison2 = grid.adoptness1long
-	for alg in alg_list:
-		progress_bar2(c, entire_length)
-		c+=1
-		selected_grid_lists.append(alg(grid_list, round_num, team_list))
-	for grid in grid_list:
-		grid.comparison1 = grid.adoptness_strict1
-		grid.comparison2 = grid.adoptness_strict2
-	for alg in alg_list:
-		progress_bar2(c, entire_length)
-		c+=1
-		selected_grid_lists.append(alg(grid_list, round_num, team_list))
-	for grid in grid_list:
-		grid.comparison1 = grid.adoptness_strict2
-		grid.comparison2 = grid.adoptness_strict1
-	for alg in alg_list:
-		progress_bar2(c, entire_length)
-		c+=1
-		selected_grid_lists.append(alg(grid_list, round_num, team_list))
-	for grid in grid_list:
-		grid.comparison1 = grid.adoptness_weight1
-		grid.comparison2 = grid.adoptness_weight2
-	for alg in alg_list:
-		progress_bar2(c, entire_length)
-		c+=1
-		selected_grid_lists.append(alg(grid_list, round_num, team_list))
-	for grid in grid_list:
-		grid.comparison1 = grid.adoptness_weight2
-		grid.comparison2 = grid.adoptness_weight1
-	for alg in alg_list:
-		progress_bar2(c, entire_length)
-		c+=1
-		selected_grid_lists.append(alg(grid_list, round_num, team_list))
-	"""
+	for cp_pair in cp_pair_list:
+		for alg in alg_list:
+			interaction_modules.progress_bar2(c, entire_length)
+			c+=1
+			selected_grid_lists.append(alg(grid_list, round_num, tournament["team_list"], cp_pair))
 
-	print()
-	progress("deleting same matchups")
+	interaction_modules.progress("")
+	interaction_modules.progress("deleting same matchups")
 	selected_grid_lists2 = []
 	for selected_grid_list in selected_grid_lists:
 		if selected_grid_list != None:
@@ -562,7 +428,7 @@ def return_selected_grid_lists(grid_list, round_num, team_list, teamnum):
 
 	for selected_grid_list3 in selected_grid_lists3:
 		selected_grid_list3.sort(key=lambda grid: grid.__hash__())
-	progress("creating more precise matchups")
+	interaction_modules.progress("creating more precise matchups")
 	if len(grid_list[0].teams) == 2:#add more precise matchups
 		selected_grid_lists4 = copy.copy(selected_grid_lists3)
 		for selected_grid_list in selected_grid_lists3:
@@ -571,9 +437,9 @@ def return_selected_grid_lists(grid_list, round_num, team_list, teamnum):
 				selected_grid_lists4.append(revised_selected_grid_list)
 	else:
 		selected_grid_lists4 = selected_grid_lists3
-	progress("adding information to matchups")
+	interaction_modules.progress("adding information to matchups")
 	for k, selected_grid_list in enumerate(selected_grid_lists4):#add information
-		selected_grid_list_info = return_grid_list_info(selected_grid_list, team_list, round_num, "", teamnum)
+		selected_grid_list_info = return_grid_list_info(selected_grid_list, tournament, round_num, "", teamnum)
 		selected_grid_lists_with_info.append([selected_grid_list, selected_grid_list_info])
 
 	##################################################################################################
@@ -970,14 +836,14 @@ def sort_team_list_by_score(team_list):
 	for j, team in enumerate(team_list):
 		team.ranking = j + 1
 
-def return_grid_list_info(selected_grid_list, team_list, round_num, comment, teamnum):
+def return_grid_list_info(selected_grid_list, tournament, round_num, comment, teamnum):
 	selected_grid_list_info = Grid_list_info()
-	grid_list_checks(selected_grid_list, team_list, round_num)
-	errors = grid_list_errors(selected_grid_list, team_list, round_num)
+	grid_list_checks(selected_grid_list, tournament, round_num)
+	errors = grid_list_errors(selected_grid_list, tournament, round_num)
 	selected_grid_list_info.large_warnings.extend(errors)
 	for grid in selected_grid_list:
-		selected_grid_list_info.large_warnings.extend(grid.large_warnings)
-	selected_grid_list_info.large_warnings = [large_warning for large_warning in selected_grid_list_info.large_warnings if large_warning != '']
+		for warn in grid.warnings:
+			selected_grid_list_info.large_warnings.append(warn.longwarning())
 	selected_grid_list_info.large_warnings.sort()
 	selected_grid_list_info.power_pairing_indicator = calc_power_pairing_indicator(selected_grid_list, teamnum)
 	selected_grid_list_info.same_institution_indicator = calc_same_institution_indicator(selected_grid_list)
@@ -1179,7 +1045,7 @@ def add_adj(allocations, chair, panel):
 			lattice.panel.append(panel)
 			break
 	else:
-		print("please write a valid chair name")
+		interaction_modules.warn("please write a valid chair name")
 
 def create_filter_of_adj_lists(orders):#Orders=>[[1,0,0,0], [0,2,3,1]] #[rand-alloc, str-str, fair-adj, conflicts]
 	functions = [random_allocation, prevent_str_wek_round, prevent_unfair_adjudicators, prevent_conflicts, avoid_watched_teams, prioritize_bubble_round, rotation_allocation]
@@ -1211,24 +1077,24 @@ def check_team_list2(team_list, experienced_round_num, teamnum):
 	for team in team_list:
 		if team.available: c+=1
 	if (c % teamnum) == 1:
-		print("[warning]The number of teams is odd")
+		interaction_modules.warn("[warning]The number of teams is odd")
 		time.sleep(1)
 	for team in team_list:
 		if len(team.past_opponents) != experienced_round_num*(teamnum-1):
 			if team.available:
-				print("[warning]{0:15s} : uncertain data in past_opponents, round num != len(past_opponents)    {1}".format(team.name, team.past_opponents))
+				interaction_modules.warn("[warning]{0:15s} : uncertain data in past_opponents, round num != len(past_opponents)    {1}".format(team.name, team.past_opponents))
 				time.sleep(0.01)
 		if len(team.scores) != experienced_round_num:
 			if team.available:
-				print("[warning]{0:15s} : uncertain data in scores, round num != len(scores)    {1}".format(team.name, team.scores))
+				interaction_modules.warn("[warning]{0:15s} : uncertain data in scores, round num != len(scores)    {1}".format(team.name, team.scores))
 				time.sleep(0.01)
 		if len(team.past_sides) != experienced_round_num:
 			if team.available:
-				print("[warning]{0:15s} : uncertain data in past_sides, round num != len(past_sides)    {1}".format(team.name, team.past_sides))
+				interaction_modules.warn("[warning]{0:15s} : uncertain data in past_sides, round num != len(past_sides)    {1}".format(team.name, team.past_sides))
 				time.sleep(0.01)
 		if len(team.wins) != experienced_round_num:
 			if team.available:
-				print("[warning]{0:15s} : uncertain data in wins, round num != len(wins)    {1}".format(team.name, team.wins))
+				interaction_modules.warn("[warning]{0:15s} : uncertain data in wins, round num != len(wins)    {1}".format(team.name, team.wins))
 				time.sleep(0.01)
 
 def cmp_allocations(allocations1, allocations2):
@@ -1243,9 +1109,9 @@ def cmp_allocations(allocations1, allocations2):
 			return False
 	return True
 
-def grid_list_errors(grid_list, team_list, round_num):
+def grid_list_errors(grid_list, tournament, round_num):
 	large_warnings = []
-	multi = {team.name:0 for team in team_list}
+	multi = {team.name:0 for team in tournament["team_list"]}
 
 	for grid in grid_list:
 		for team in grid.teams:
@@ -1253,7 +1119,7 @@ def grid_list_errors(grid_list, team_list, round_num):
 
 	for k, v in list(multi.items()):
 		condemned_team = None
-		for team in team_list:
+		for team in tournament["team_list"]:
 			if team.name == k:
 				condemned_team = team
 				break
@@ -1273,13 +1139,13 @@ def grid_list_errors(grid_list, team_list, round_num):
 
 	return large_warnings
 
-def grid_list_checks(grid_list, team_list, round_num):
+def grid_list_checks(grid_list, tournament, round_num):
 	for grid in grid_list:
 		grid.warnings = []
 		grid.large_warnings = []
-	grid_check_one_sided(grid_list, team_list, round_num)
-	grid_check_past_opponent(grid_list, team_list, round_num)
-	grid_check_same_institution(grid_list, team_list, round_num)
+	grid_check_one_sided(grid_list, tournament["team_list"], round_num)
+	grid_check_past_opponent(grid_list, tournament["team_list"], round_num)
+	grid_check_same_institution(grid_list, tournament["team_list"], round_num)
 	grid_check_power_pairing(grid_list, round_num)
 
 def grid_check_power_pairing(grid_list, round_num):
@@ -1288,8 +1154,7 @@ def grid_check_power_pairing(grid_list, round_num):
 			for grid in grid_list:
 				if abs(grid.teams[0].ranking - grid.teams[1].ranking) > int(0.3*2*len(grid_list)) or abs(sum(grid.teams[0].wins) - sum(grid.teams[1].wins)) > 1:
 					difference = int(100*abs(grid.teams[0].ranking - grid.teams[1].ranking)/float(2*len(grid_list)))
-					grid.warnings.append("wrn(diff {0:d}%, {1}:{2})".format(difference, sum(grid.teams[0].wins), sum(grid.teams[1].wins)))
-					grid.large_warnings.append("warning : stronger vs weaker team, {0:12s}-{1:12s} ranking difference: {2:d}%, wins: {3:d}-{4:d}".format(grid.teams[0].name, grid.teams[1].name, difference, sum(grid.teams[0].wins), sum(grid.teams[1].wins)))
+					grid.warnings.append(PowerPairing(grid.teams[0], grid.teams[-1], difference))
 	else:
 		if round_num > 1:
 			all_wins = [sum(team.wins) for grid in grid_list for team in grid.teams]
@@ -1303,26 +1168,22 @@ def grid_check_power_pairing(grid_list, round_num):
 				len_teams = len(grid_list)*4
 				if rankings[3]-rankings[0] > int(0.3*len_teams) or ret_wei(wins[3], all_wins, len(grid_list))-ret_wei(wins[0], all_wins, len(grid_list)) > 1:
 					difference = int(100*abs(rankings[3]-rankings[0])/float(len_teams))
-					grid.warnings.append("wrn(diff {0:d}%, {1:2d}:{2:2d})".format(difference, wins[3], wins[0]))
-					grid.large_warnings.append("warning : stronger vs weaker team, {0:12s}:{1:12s}, ranking difference: {2:d}%, wins: {3:d}-{4:d}".format(teams_sorted[0][0].name, teams_sorted[3][0].name, difference, wins[3], wins[0]))
+					grid.warnings.append(PowerPairing(teams_sorted[0][0], teams_sorted[3][0], difference))
 
-def grid_check_one_sided(grid_list, team_list, round_num):
+def grid_check_one_sided(grid_list, tournament, round_num):
 	if len(grid_list[0].teams) == 2:
 		for i, grid in enumerate(grid_list):
 			if is_one_sided(grid.teams[0], "gov", 2) != 0:
-				grid.large_warnings.append("warning : a team's side unfair :"+str(grid.teams[0].name)+"("+str(grid.teams[0].past_sides.count("gov")+1)+":"+str(grid.teams[0].past_sides.count("opp"))+")")
-				grid.warnings.append("wrn(unfair side)")
+				grid.warnings.append(Sided(grid.teams[0], "gov", [grid.teams[0].past_sides.count("gov")+1, grid.teams[0].past_sides.count("opp")]))
 			if is_one_sided(grid.teams[1], "opp", 2) != 0:
-				grid.large_warnings.append("warning : a team's side unfair :"+str(grid.teams[1].name)+"("+str(grid.teams[1].past_sides.count("gov"))+":"+str(grid.teams[1].past_sides.count("opp")+1)+")")
-				grid.warnings.append("wrn(unfair side)")
+				grid.warnings.append(Sided(grid.teams[1], "opp", [grid.teams[0].past_sides.count("gov"), grid.teams[0].past_sides.count("opp")+1]))
 			if grid.teams[0].past_sides.count("gov") == len(grid.teams[0].past_sides):# or grid.teams[0].past_sides.count(False) == len(grid.teams[0].past_sides):
 				if round_num > 2:
-					grid.large_warnings.append("warning : a team's side all gov :"+str(grid.teams[0].name)+"("+str(len(grid.teams[0].past_sides)+1)+")")
-					grid.warnings.append("wrn(one sided)")
+					interaction_modules.warn("ka;dslfjadsfdddddddddddd¥n¥n¥n¥n¥n¥n¥n¥n¥nn¥¥n¥n¥n¥n¥n")
+					grid.warnings.append(AllSided(grid.teams[0], "gov", len(grid.teams[0].past_sides)+1))
 			if grid.teams[1].past_sides.count("opp") == len(grid.teams[1].past_sides):# or grid.teams[1].past_sides.count(True) == len(grid.teams[1].past_sides):
 				if round_num > 2:
-					grid.large_warnings.append("warning : a team's side all opp :"+str(grid.teams[1].name)+"("+str(len(grid.teams[1].past_sides)+1)+")")
-					grid.warnings.append("wrn(one sided)")
+					grid.warnings.append(AllSided(grid.teams[1], "opp", len(grid.teams[0].past_sides)+1))
 	else:
 		for i, grid in enumerate(grid_list):
 			og_sided_value = is_one_halfed(grid.teams[0], "og")
@@ -1345,75 +1206,55 @@ def grid_check_one_sided(grid_list, team_list, round_num):
 			"""
 			if grid.teams[0].past_sides.count("og") == len(grid.teams[0].past_sides):# or grid.teams[0].past_sides.count(False) == len(grid.teams[0].past_sides):
 				if round_num > 2:
-					grid.large_warnings.append("warning : a team's position all og :"+str(grid.teams[0].name))
-					grid.warnings.append("wrn(one sided)")
+					grid.warnings.append(AllSided(grid.teams[0], "og", len(grid.teams[0].past_sides)+1))
 			if grid.teams[1].past_sides.count("oo") == len(grid.teams[1].past_sides):# or grid.teams[1].past_sides.count(True) == len(grid.teams[1].past_sides):
 				if round_num > 2:
-					grid.large_warnings.append("warning : a team's position all oo :"+str(grid.teams[1].name))
-					grid.warnings.append("wrn(one sided)")
+					grid.warnings.append(AllSided(grid.teams[1], "oo", len(grid.teams[1].past_sides)+1))
 			if grid.teams[2].past_sides.count("cg") == len(grid.teams[2].past_sides):# or grid.teams[1].past_sides.count(True) == len(grid.teams[1].past_sides):
 				if round_num > 2:
-					grid.large_warnings.append("warning : a team's position all cg :"+str(grid.teams[2].name))
-					grid.warnings.append("wrn(one sided)")
+					grid.warnings.append(AllSided(grid.teams[2], "cg", len(grid.teams[2].past_sides)+1))
 			if grid.teams[3].past_sides.count("co") == len(grid.teams[3].past_sides):# or grid.teams[1].past_sides.count(True) == len(grid.teams[1].past_sides):
 				if round_num > 2:
-					grid.large_warnings.append("warning : a team's position all co :"+str(grid.teams[3].name))
-					grid.warnings.append("wrn(one sided)")
+					grid.warnings.append(AllSided(grid.teams[3], "co", len(grid.teams[3].past_sides)+1))
 			if abs(og_sided_value) == 1:
-				grid.large_warnings.append("warning : a team's position is one sided on government/opposition: "+str(grid.teams[0].name)+"("+str(grid.teams[0].past_sides.count("og")+1)+":"+str(grid.teams[0].past_sides.count("oo"))+":"+str(grid.teams[0].past_sides.count("cg"))+":"+str(grid.teams[0].past_sides.count("co"))+")")
-				grid.warnings.append("wrn(unfair side)")
+				grid.warnings.append(Sided(grid.teams[0], "government/opposition", [grid.teams[0].past_sides.count("og")+1, grid.teams[0].past_sides.count("oo"), grid.teams[0].past_sides.count("cg"), grid.teams[0].past_sides.count("co")]))
 			elif abs(og_sided_value) == 2:
-				grid.large_warnings.append("warning : a team's position is one sided on opening/closing:"+str(grid.teams[0].name)+"("+str(grid.teams[0].past_sides.count("og")+1)+":"+str(grid.teams[0].past_sides.count("oo"))+":"+str(grid.teams[0].past_sides.count("cg"))+":"+str(grid.teams[0].past_sides.count("co"))+")")
-				grid.warnings.append("wrn(unfair side)")
+				grid.warnings.append(Sided(grid.teams[0], "opening/closing", [grid.teams[0].past_sides.count("og")+1, grid.teams[0].past_sides.count("oo"), grid.teams[0].past_sides.count("cg"), grid.teams[0].past_sides.count("co")]))
 			if abs(oo_sided_value) == 1:
-				grid.large_warnings.append("warning : a team's position is one sided on government/opposition: "+str(grid.teams[1].name)+"("+str(grid.teams[1].past_sides.count("og"))+":"+str(grid.teams[1].past_sides.count("oo")+1)+":"+str(grid.teams[1].past_sides.count("cg"))+":"+str(grid.teams[1].past_sides.count("co"))+")")
-				grid.warnings.append("wrn(unfair side)")
+				grid.warnings.append(Sided(grid.teams[1], "government/opposition", [grid.teams[1].past_sides.count("og"), grid.teams[1].past_sides.count("oo")+1, grid.teams[1].past_sides.count("cg"), grid.teams[1].past_sides.count("co")]))
 			elif abs(oo_sided_value) == 2:
-				grid.large_warnings.append("warning : a team's position is one sided on opening/closing:"+str(grid.teams[1].name)+"("+str(grid.teams[1].past_sides.count("og"))+":"+str(grid.teams[1].past_sides.count("oo")+1)+":"+str(grid.teams[1].past_sides.count("cg"))+":"+str(grid.teams[1].past_sides.count("co"))+")")
-				grid.warnings.append("wrn(unfair side)")
+				grid.warnings.append(Sided(grid.teams[1], "opening/closing", [grid.teams[1].past_sides.count("og"), grid.teams[1].past_sides.count("oo")+1, grid.teams[1].past_sides.count("cg"), grid.teams[1].past_sides.count("co")]))
 			if abs(cg_sided_value) == 1:
-				grid.large_warnings.append("warning : a team's position is one sided on government/opposition: "+str(grid.teams[2].name)+"("+str(grid.teams[2].past_sides.count("og"))+":"+str(grid.teams[2].past_sides.count("oo"))+":"+str(grid.teams[2].past_sides.count("cg")+1)+":"+str(grid.teams[2].past_sides.count("co"))+")")
-				grid.warnings.append("wrn(unfair side)")
+				grid.warnings.append(Sided(grid.teams[2], "government/opposition", [grid.teams[2].past_sides.count("og"), grid.teams[2].past_sides.count("oo"), grid.teams[2].past_sides.count("cg")+1, grid.teams[2].past_sides.count("co")]))
 			elif abs(cg_sided_value) == 2:
-				grid.large_warnings.append("warning : a team's position is one sided on opening/closing:"+str(grid.teams[2].name)+"("+str(grid.teams[2].past_sides.count("og"))+":"+str(grid.teams[2].past_sides.count("oo"))+":"+str(grid.teams[2].past_sides.count("cg")+1)+":"+str(grid.teams[2].past_sides.count("co"))+")")
-				grid.warnings.append("wrn(unfair side)")
+				grid.warnings.append(Sided(grid.teams[2], "opening/closing", [grid.teams[2].past_sides.count("og"), grid.teams[2].past_sides.count("oo"), grid.teams[2].past_sides.count("cg")+1, grid.teams[2].past_sides.count("co")]))
 			if abs(co_sided_value) == 1:
-				grid.large_warnings.append("warning : a team's position is one sided on government/opposition: "+str(grid.teams[3].name)+"("+str(grid.teams[3].past_sides.count("og"))+":"+str(grid.teams[3].past_sides.count("oo"))+":"+str(grid.teams[3].past_sides.count("cg"))+":"+str(grid.teams[3].past_sides.count("co")+1)+")")
-				grid.warnings.append("wrn(unfair side)")
+				grid.warnings.append(Sided(grid.teams[3], "government/opposition", [grid.teams[3].past_sides.count("og"), grid.teams[3].past_sides.count("oo"), grid.teams[3].past_sides.count("cg"), grid.teams[3].past_sides.count("co")+1]))
 			elif abs(co_sided_value) == 2:
-				grid.large_warnings.append("warning : a team's position is one sided on opening/closing:"+str(grid.teams[3].name)+"("+str(grid.teams[3].past_sides.count("og"))+":"+str(grid.teams[3].past_sides.count("oo"))+":"+str(grid.teams[3].past_sides.count("cg"))+":"+str(grid.teams[3].past_sides.count("co")+1)+")")
-				grid.warnings.append("wrn(unfair side)")
+				grid.warnings.append(Sided(grid.teams[3], "opening/closing", [grid.teams[3].past_sides.count("og"), grid.teams[3].past_sides.count("oo"), grid.teams[3].past_sides.count("cg"), grid.teams[3].past_sides.count("co")+1]))
 
-def grid_check_past_opponent(grid_list, team_list, round_num):
+def grid_check_past_opponent(grid_list, tournament, round_num):
 	for i, grid in enumerate(grid_list):
 		pair_list = list(itertools.combinations(grid.teams, 2))
-		past_num = 0
+		#past_num = 0
 		for pair in pair_list:
 			if pair[0].past_opponents.count(pair[1].name) > 0:
-				grid.large_warnings.append("warning : a team matching again with past opponent :"+str(pair[0].name)+"-"+str(pair[1].name))
-				past_num += 1
-		if past_num == 1:
-			grid.warnings.append("wrn(past opponent)".format(past_num))
-		elif past_num > 1:
-			grid.warnings.append("wrn(past opponent:{0})".format(past_num))
+				#grid.large_warnings.append("warning : a team matching again with past opponent :"+str(pair[0].name)+"-"+str(pair[1].name))
+				#past_num += 1
+				grid.warnings.append(PastOpponent(pair[0], pair[1]))
 
-def grid_check_same_institution(grid_list, team_list, round_num):
+def grid_check_same_institution(grid_list, tournament, round_num):
 	for i, grid in enumerate(grid_list):
 		pair_list = list(itertools.combinations(grid.teams, 2))
 		for pair in pair_list:
-			conflicting_insti = set(pair[0].institutions) & set(pair[1].institutions)
+			conflicting_insti = list(set(pair[0].institutions) & set(pair[1].institutions))
 			if conflicting_insti:
-				grid.large_warnings.append("warning : a team matching with the same institution("+pair[0].institution_scale+") :"+str(pair[0].institutions)+"-"+str(pair[1].institutions))
-				if pair[0].institution_scale == "c":
-					grid.warnings.append("wrn(same insti(c))")
-				elif pair[0].institution_scale == "b":
-					grid.warnings.append("wrn(same insti(b))")
-				elif pair[0].institution_scale == "a":
-					grid.warnings.append("wrn(same insti(a))")
+				for ci in conflicting_insti:
+					grid.warnings.append(SameInstitution(conflicting_insti[0]))
 
-def lattice_list_errors(selected_lattice_list, adjudicator_list, round_num):
+def lattice_list_errors(selected_lattice_list, tournament, round_num):
 	large_warnings = []
-	multi2 = {adjudicator.name:0 for adjudicator in adjudicator_list}
+	multi2 = {adjudicator.name:0 for adjudicator in tournament["adjudicator_list"]}
 
 	for lattice in selected_lattice_list:
 		multi2[lattice.chair.name] += 1
@@ -1428,7 +1269,7 @@ def lattice_list_errors(selected_lattice_list, adjudicator_list, round_num):
 			large_warnings.append("error : an adjudicator appears more than two times :"+str(k)+": "+str(v))
 		elif v == 0:
 			condemned_adjudicator = None
-			for adjudicator in adjudicator_list:
+			for adjudicator in tournament["adjudicator_list"]:
 				if adjudicator.name == k:
 					condemned_adjudicator = adjudicator
 					break
@@ -1438,7 +1279,7 @@ def lattice_list_errors(selected_lattice_list, adjudicator_list, round_num):
 				large_warnings.append("attention : an adjudicator is absent :"+str(k))
 
 	max_active_num = 0
-	for adjudicator in adjudicator_list:
+	for adjudicator in tournament["adjudicator_list"]:
 		if adjudicator.active_num > max_active_num:
 			max_active_num = adjudicator.active_num
 	next_active_adjudicators = []
@@ -1450,12 +1291,12 @@ def lattice_list_errors(selected_lattice_list, adjudicator_list, round_num):
 		if adjudicator.active_num > max_active_num-1:
 			max_active_num = adjudicator.active_num+1
 
-	for adjudicator in adjudicator_list:
+	for adjudicator in tournament["adjudicator_list"]:
 		if (adjudicator not in next_active_adjudicators) and ((max_active_num - adjudicator.active_num) > 0) and not(adjudicator.absent):
 				large_warnings.append("warning : an adjudicator does nothing :{0:20s}, {1}".format(adjudicator.name, adjudicator.active_num))
 
 	if round_num > 0:
-		for adjudicator in adjudicator_list:
+		for adjudicator in tournament["adjudicator_list"]:
 			if adjudicator.active_num_as_chair == 0:
 				large_warnings.append("warning : a judge hasn't experienced a chair yet :"+str(adjudicator.name))
 	return large_warnings
