@@ -142,7 +142,7 @@ def prompt(selected_grid_lists_with_info, tournament, grid_list, round_num, fnam
 
 				new_matchups = copy.deepcopy(selected_grid_lists_with_info[data[0]-1])
 
-				exchange_teams(new_matchups[0], team_a, team_b)
+				exchange_teams(grid_list, new_matchups[0], team_a, team_b)
 				#for grid in new_matchups[0]:
 				#	if grid.warnings != []:
 				#		print grid.warnings
@@ -419,7 +419,7 @@ def prompt_venue(allocations, tournament, round_num, fnames, style_cfg):
 			interaction_modules.commandline("venues: see all the venues")
 			interaction_modules.commandline("set venue: set venues")
 
-def prompt_before(tournament, fnames, teamnum, debater_num_per_team, style_cfg, round_num):
+def prompt_before(grid_list, tournament, fnames, teamnum, debater_num_per_team, style_cfg, round_num):
 	while True:
 		save(tournament, fnames, style_cfg)
 		f_names = fnames["workfolder"].split("/")
@@ -474,7 +474,9 @@ def prompt_before(tournament, fnames, teamnum, debater_num_per_team, style_cfg, 
 					for debater in team.debaters:
 						debater.score_lists_sub.append(score_list)
 						debater.scores_sub.append(score)
+				add_grid_by_team(grid_list, tournament["team_list"], team, teamnum)
 				tournament["team_list"].append(team)
+
 				interaction_modules.progress(new_team_name + "was added to team list successfully")
 
 			except:
@@ -489,6 +491,7 @@ def prompt_before(tournament, fnames, teamnum, debater_num_per_team, style_cfg, 
 
 				for team in tournament["team_list"]:
 					if team.name == team_name:
+						delete_grid_by_team(grid_list, tournament["team_list"], team, teamnum)
 						tournament["team_list"].remove(team)
 						interaction_modules.progress(team_name + " was deleted from team list successfully")
 						break
@@ -769,13 +772,19 @@ def main_demo(tournament, filter_lists, filter_of_adj_lists, constants, constant
 	teamnum = style_cfg["team_num"]
 	debater_num_per_team = style_cfg["debater_num_per_team"]
 	if not checks_before_creation(tournament, teamnum): sys.exit(4)
+	grid_list = []
+	grid_flag = threading.Event()
+	create_grid_list_by_thread(grid_list, tournament["team_list"], teamnum, grid_flag)
 	for i in range(rounds):
 		#export_info(adjudicator_list, team_list, i+1, style_cfg, fnames["workfolder"])
 		arrange_data(tournament, constants_of_adj)
 
-		interaction_modules.progress("creating grid list")
+		if not grid_flag.isSet():
+			while True:
+				if grid_flag.isSet(): break
+				interaction_modules.progress('creating grid list '+str(int(100*len(grid_list)/perm(len(tournament["team_list"]), teamnum)))+'% completed')
+				time.sleep(0.1)
 
-		grid_list = create_grid_list(tournament["team_list"], teamnum)
 		selected_grid_lists_with_info = create_matchups(grid_list=grid_list, round_num=i+1, tournament=tournament, filter_lists=filter_lists, teamnum=teamnum, workfolder_name=fnames["workfolder"])
 		for selected_grid_list_with_info in selected_grid_lists_with_info:####selected_grid_list_with_info => [selected_grid_list, selected_grid_list_info]
 			show_matchups_by_grid(selected_grid_list_with_info, i+1)
@@ -801,6 +810,7 @@ def main_demo(tournament, filter_lists, filter_of_adj_lists, constants, constant
 		export_dummy_results_adj(allocations[0], i+1, style_cfg, fnames["workfolder"])
 		show_matchups(allocations, i+1)
 
+		refresh_grids(grid_list)
 		finish_round_debug(allocations=allocations[0], round_num=i+1, style_cfg=style_cfg, workfolder_name=fnames["workfolder"])
 		read_and_process_result(round_num=i+1, tournament=tournament, style_cfg=style_cfg, filename_results = fnames["workfolder"]+"private/Results"+str(i+1)+".csv")
 		read_and_process_result_adj(round_num=i+1, tournament=tournament, teamnum=teamnum, filename_results_of_adj=fnames["workfolder"]+"private/Results_of_adj"+str(i+1)+".csv")
@@ -814,15 +824,21 @@ def main_demo(tournament, filter_lists, filter_of_adj_lists, constants, constant
 def main_complete(tournament, filter_lists, filter_of_adj_lists, constants, constants_of_adj, rounds, fnames, break_team_nums, no_adj, style_cfg):
 	teamnum = style_cfg["team_num"]
 	debater_num_per_team = style_cfg["debater_num_per_team"]
+	grid_list = []
+	grid_flag = threading.Event()
+	create_grid_list_by_thread(grid_list, tournament["team_list"], teamnum, grid_flag)
 	for i in range(rounds):
 		save(tournament, fnames, style_cfg)
 		interaction_modules.progress("-----------------Round "+str(i+1)+"-----------------")
 		#export_info(adjudicator_list, team_list, i+1, style_cfg, fnames["workfolder"])
-		prompt_before(tournament, fnames, teamnum, debater_num_per_team, style_cfg, i+1)
+		prompt_before(grid_list, tournament, fnames, teamnum, debater_num_per_team, style_cfg, i+1)
 		arrange_data(tournament, constants_of_adj)
 		#export_info(adjudicator_list, team_list, i+1, style_cfg, fnames["workfolder"])
-		interaction_modules.progress("creating grid list")
-		grid_list = create_grid_list(tournament["team_list"], teamnum)
+		if not grid_flag.isSet():
+			while True:
+				if grid_flag.isSet(): break
+				interaction_modules.progress('creating grid list '+str(int(100*len(grid_list)/perm(len(tournament["team_list"]), teamnum)))+'% completed')
+				time.sleep(0.1)
 
 		fn_match = "matchups_imported/matchups_for_round_"+str(i+1)+".csv"
 		fn = "private/Results"+str(i+1)+".csv"
@@ -930,7 +946,7 @@ def main_complete(tournament, filter_lists, filter_of_adj_lists, constants, cons
 			matchups = prompt(selected_grid_lists_with_info, tournament, grid_list, i+1, fnames, debater_num_per_team, teamnum, style_cfg)
 			export_matchups(matchups[0], "matchups_without_adj", i+1, fnames["workfolder"])
 
-			prompt_before(tournament, fnames, teamnum, debater_num_per_team, style_cfg, i+1)
+			prompt_before(grid_list, tournament, fnames, teamnum, debater_num_per_team, style_cfg, i+1)
 
 			lattice_list = create_lattice_list(matchups[0], tournament["adjudicator_list"])
 			selected_lattice_lists_with_info = create_allocations(tournament=tournament, selected_grid_list=matchups[0], lattice_list=lattice_list, break_team_num=break_team_nums[i], round_num=i+1, filter_lists=filter_of_adj_lists, constants_of_adj=constants_of_adj, teamnum=teamnum, workfolder_name=fnames["workfolder"])
@@ -965,6 +981,7 @@ def main_complete(tournament, filter_lists, filter_of_adj_lists, constants, cons
 
 		export_dummy_results_adj(allocations[0], i+1, style_cfg, fnames["workfolder"])
 
+		refresh_grids(grid_list)
 		while True:
 			a = input("read results of round {0}? (y/n) > ".format(i+1))
 			if re.match(r'y', a):
@@ -1005,12 +1022,20 @@ def main_complete(tournament, filter_lists, filter_of_adj_lists, constants, cons
 def main_quick_debug(tournament, filter_lists, filter_of_adj_lists, constants, constants_of_adj, rounds, fnames, break_team_nums, style_cfg):
 	teamnum = style_cfg["team_num"]
 	debater_num_per_team = style_cfg["debater_num_per_team"]
+	grid_list = []
+	grid_flag = threading.Event()
+	create_grid_list_by_thread(grid_list, tournament["team_list"], teamnum, grid_flag)
 	for i in range(rounds):
 		save(tournament, fnames, style_cfg)
 		#export_info(adjudicator_list, team_list, i+1, style_cfg, fnames["workfolder"])
-		prompt_before(tournament, fnames, teamnum, debater_num_per_team, style_cfg, i+1)
+		prompt_before(grid_list, tournament, fnames, teamnum, debater_num_per_team, style_cfg, i+1)
 		arrange_data(tournament, constants_of_adj)
 		#export_info(adjudicator_list, team_list, i+1, style_cfg, fnames["workfolder"])
+		if not grid_flag.isSet():
+			while True:
+				if grid_flag.isSet(): break
+				interaction_modules.progress('creating grid list '+str(int(100*len(grid_list)/perm(len(tournament["team_list"]), teamnum)))+'% completed')
+				time.sleep(0.1)
 
 		interaction_modules.progress("creating grid list")
 		grid_list = create_grid_list(tournament["team_list"], teamnum)
@@ -1039,6 +1064,7 @@ def main_quick_debug(tournament, filter_lists, filter_of_adj_lists, constants, c
 		export_dummy_results_adj(allocations[0], i+1, style_cfg, fnames["workfolder"])
 		show_matchups(allocations, i+1)
 
+		refresh_grids(grid_list)
 		finish_round_debug(allocations=allocations[0], round_num=i+1, style_cfg=style_cfg, workfolder_name=fnames["workfolder"])
 		read_and_process_result(round_num=i+1, tournament=tournament, style_cfg=style_cfg, filename_results = fnames["workfolder"]+"private/Results"+str(i+1)+".csv")
 		read_and_process_result_adj(round_num=i+1, tournament=tournament, teamnum=teamnum, filename_results_of_adj=fnames["workfolder"]+"private/Results_of_adj"+str(i+1)+".csv")

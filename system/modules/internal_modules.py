@@ -2,6 +2,7 @@
 import random
 import time
 import itertools
+import threading
 import collections
 from . import interaction_modules
 import re
@@ -241,18 +242,54 @@ def lattice_filtration(tournament, selected_grid_list, lattice_list, break_team_
 		#show_adoptbitslong_lattice(adjudicator_list, lattice_list, k)
 	interaction_modules.progress("")
 
-def create_grid_list(team_list, teamnum):
-	grid_list = []
+def create_grid_list_by_thread(grid_list, team_list, teamnum, flag):
+	try:
+		t = threading.Thread(target=cgl, args=(grid_list, team_list, teamnum, flag))
+		t.setDaemon(True)
+		t.start()
+	except:
+		interaction_modules.warn("couldn't start the sub thread")
+		cgl(grid_list, team_list, teamnum, flag)
+	refresh_grids_for_adopt(grid_list)
+
+def cgl(grid_list, team_list, teamnum, flag):
 	team_combinations_list = list(itertools.combinations(team_list, teamnum))
+	grid_list.extend(create_grids_by_combinations_list(team_combinations_list))
+	try:
+		flag.set()
+	except:
+		pass
+
+def add_grid_by_team(grid_list, team_list, team, teamnum):
+	team_combinations_list = list(itertools.combinations(team_list, teamnum-1))
+	team_combinations_list = map((lambda comb: comb+[team]), team_combinations_list)
+	grid_list.extend(create_grids_by_combinations_list(team_combinations_list))
+
+def delete_grid_by_team(grid_list, team):
+	def related(grid, team):
+		if team in grid.teams:
+			return True
+		else:
+			return False
+	#new_grid_list = 
+	grid_list = [grid for grid in grid_list if not related(grid, team)]
+
+def create_grids_by_combinations_list(team_combinations_list):
+	grid_list = []
 	for team_combinations in team_combinations_list:
 		team_permutations_list = list(itertools.permutations(team_combinations))
 		related_grids = [Grid(list(team_permutations)) for team_permutations in team_permutations_list]
-		grid_list.extend(related_grids)
 		for grid in related_grids:
 			grid.related_grids = related_grids
 			if True in [not(team.available) for team in grid.teams]:
 				grid.available = False
+		grid_list.extend(related_grids)
+	return grid_list
 
+def create_grid_list(team_list, teamnum):
+	grid_list = []
+	flag = False
+	cgl(grid_list, team_list, teamnum, flag)
 	return grid_list
 	"""
 	if teamnum == 2:
@@ -406,12 +443,36 @@ def return_selected_grid_lists(grid_list, round_num, tournament, teamnum):
 
 	entire_length = len(alg_list) * 8
 	c = 1
+
+	def wrap(alg):
+		def new_alg(es, selected_grid_lists, index, *args):
+			selected_grid_lists[index] = alg(*args)
+			es[index].set()
+		return new_alg
+
+	#threads = []
+	new_selected_grid_lists = [[] for i in range(len(alg_list)*len(cp_pair_list))]
+	es = [threading.Event() for i in range(len(alg_list)*len(cp_pair_list))]
+	for i, cp_pair in enumerate(cp_pair_list):
+		for j, alg in enumerate(alg_list):
+			alg_wrapped = wrap(alg)
+			t = threading.Thread(target=alg_wrapped, args=(es, new_selected_grid_lists, i*len(alg_list)+j, grid_list, round_num, tournament["team_list"], cp_pair))
+			t.setDaemon(True)
+			#t.start()
+			if i == 0 and j == 0: t.start()
+
+	while True:
+		#if False not in [e.isSet() for e in es]:break
+		if es[0].isSet(): break
+		time.sleep(0.1)
+	print(new_selected_grid_lists)
+	"""
 	for cp_pair in cp_pair_list:
 		for alg in alg_list:
 			interaction_modules.progress_bar2(c, entire_length)
 			c+=1
 			selected_grid_lists.append(alg(grid_list, round_num, tournament["team_list"], cp_pair))
-
+	"""
 	interaction_modules.progress("")
 	interaction_modules.progress("deleting same matchups")
 	selected_grid_lists2 = []
@@ -931,79 +992,85 @@ def evaluate_adjudicator(adjudicator_list, constants_of_adj):
 		if adjudicator.active_num != 0:
 			adjudicator.evaluation += sum(adjudicator.scores) / adjudicator.active_num * constants_of_adj[adjudicator.active_num]["judge_perf_percent"]/100.0
 
-def exchange_teams(matchups, team_a, team_b):
+def refresh_grids(grid_list):
+	for grid in grid_list:
+		grid.initialize()
+
+def exchange_teams(grid_list, matchups, team_a, team_b):
 	if len(matchups[0].teams) == 2:
-		for grid in matchups:
+		for i, grid in enumerate(matchups):
 			if grid.teams[0] == team_a and grid.teams[1] == team_b:
-				grid.teams[0], grid.teams[1] = team_b, team_a
+				matchups[i] = find_grid_from_grid_list(grid_list, [team_b, team_a])
+				#grid.teams[0], grid.teams[1] = 
 				break
 			elif grid.teams[1] == team_a and grid.teams[0] == team_b:
-				grid.teams[0], grid.teams[1] = team_a, team_b
+				matchups[i] = find_grid_from_grid_list(grid_list, [team_a, team_b])
 				break
 			else:
 				if grid.teams[0] == team_a:
-					grid.teams[0] = team_b
+					matchups[i] = find_grid_from_grid_list(grid_list, [team_b, grid.teams[1]])
 				elif grid.teams[1] == team_b:
-					grid.teams[1] = team_a
+					matchups[i] = find_grid_from_grid_list(grid_list, [grid.teams[0], team_a])
 				elif grid.teams[1] == team_a:
-					grid.teams[1] = team_b
+					matchups[i] = find_grid_from_grid_list(grid_list, [grid.teams[0], team_b])
 				elif grid.teams[0] == team_b:
-					grid.teams[0] = team_a
+					matchups[i] = find_grid_from_grid_list(grid_list, [team_a, grid.teams[1]])
 	else:
-		for grid in matchups:
+		for i, grid in enumerate(matchups):
 			if grid.teams[0] == team_a and grid.teams[1] == team_b:
-				grid.teams[0], grid.teams[1] = team_b, team_a
+				#grid.teams[0], grid.teams[1] = team_b, team_a
+				matchups[i] = find_grid_from_grid_list(grid_list, [team_b, team_a, grid.teams[2], grid.teams[3]])
 				break
 			elif grid.teams[0] == team_a and grid.teams[2] == team_b:
-				grid.teams[0], grid.teams[2] = team_b, team_a
+				matchups[i] = find_grid_from_grid_list(grid_list, [team_b, grid.teams[1], team_a, grid.teams[3]])
 				break
 			elif grid.teams[0] == team_a and grid.teams[3] == team_b:
-				grid.teams[0], grid.teams[3] = team_b, team_a
+				matchups[i] = find_grid_from_grid_list(grid_list, [team_b, grid.teams[1], grid.teams[2], team_a])
 				break
 			elif grid.teams[1] == team_a and grid.teams[0] == team_b:
-				grid.teams[1], grid.teams[0] = team_b, team_a
+				matchups[i] = find_grid_from_grid_list(grid_list, [team_a, team_b, grid.teams[2], grid.teams[3]])
 				break
 			elif grid.teams[1] == team_a and grid.teams[2] == team_b:
-				grid.teams[1], grid.teams[2] = team_b, team_a
+				matchups[i] = find_grid_from_grid_list(grid_list, [grid.teams[0], team_b, team_a, grid.teams[3]])
 				break
 			elif grid.teams[1] == team_a and grid.teams[3] == team_b:
-				grid.teams[1], grid.teams[3] = team_b, team_a
+				matchups[i] = find_grid_from_grid_list(grid_list, [grid.teams[0], team_b, grid.teams[2], team_a])
 				break
 			elif grid.teams[2] == team_a and grid.teams[0] == team_b:
-				grid.teams[2], grid.teams[0] = team_b, team_a
+				matchups[i] = find_grid_from_grid_list(grid_list, [team_a, grid.teams[1], team_b, grid.teams[3]])
 				break
 			elif grid.teams[2] == team_a and grid.teams[1] == team_b:
-				grid.teams[2], grid.teams[1] = team_b, team_a
+				matchups[i] = find_grid_from_grid_list(grid_list, [grid.teams[0], team_a, team_b, grid.teams[3]])
 				break
 			elif grid.teams[2] == team_a and grid.teams[3] == team_b:
-				grid.teams[2], grid.teams[3] = team_b, team_a
+				matchups[i] = find_grid_from_grid_list(grid_list, [grid.teams[0], grid.teams[1], team_b, team_a])
 				break
 			elif grid.teams[3] == team_a and grid.teams[0] == team_b:
-				grid.teams[3], grid.teams[0] = team_b, team_a
+				matchups[i] = find_grid_from_grid_list(grid_list, [team_a, grid.teams[1], grid.teams[2], team_b])
 				break
 			elif grid.teams[3] == team_a and grid.teams[1] == team_b:
-				grid.teams[3], grid.teams[1] = team_b, team_a
+				matchups[i] = find_grid_from_grid_list(grid_list, [grid.teams[0], team_a, grid.teams[2], team_b])
 				break
 			elif grid.teams[3] == team_a and grid.teams[2] == team_b:
-				grid.teams[3], grid.teams[2] = team_b, team_a
+				matchups[i] = find_grid_from_grid_list(grid_list, [grid.teams[0], grid.teams[1], team_a, team_b])
 				break
 			else:
 				if grid.teams[0] == team_a:
-					grid.teams[0] = team_b
+					matchups[i] = find_grid_from_grid_list(grid_list, [team_b, grid.teams[1], grid.teams[2], grid.teams[3]])
 				elif grid.teams[1] == team_a:
-					grid.teams[1] = team_b
+					matchups[i] = find_grid_from_grid_list(grid_list, [grid.teams[0], team_b, grid.teams[2], grid.teams[3]])
 				elif grid.teams[2] == team_a:
-					grid.teams[2] = team_b
+					matchups[i] = find_grid_from_grid_list(grid_list, [grid.teams[0], grid.teams[1], team_b, grid.teams[3]])
 				elif grid.teams[3] == team_a:
-					grid.teams[3] = team_b
+					matchups[i] = find_grid_from_grid_list(grid_list, [grid.teams[0], grid.teams[1], grid.teams[2], team_b])
 				elif grid.teams[0] == team_b:
-					grid.teams[0] = team_a
+					matchups[i] = find_grid_from_grid_list(grid_list, [team_a, grid.teams[1], grid.teams[2], grid.teams[3]])
 				elif grid.teams[1] == team_b:
-					grid.teams[1] = team_a
+					matchups[i] = find_grid_from_grid_list(grid_list, [grid.teams[0], team_a, grid.teams[2], grid.teams[3]])
 				elif grid.teams[2] == team_b:
-					grid.teams[2] = team_a
+					matchups[i] = find_grid_from_grid_list(grid_list, [grid.teams[0], grid.teams[1], team_a, grid.teams[3]])
 				elif grid.teams[3] == team_b:
-					grid.teams[3] = team_a
+					matchups[i] = find_grid_from_grid_list(grid_list, [grid.teams[0], grid.teams[1], grid.teams[2], team_a])
 
 def exchange_adj(allocations, adjudicator1, adjudicator2):
 	for lattice in allocations[0]:
@@ -1179,11 +1246,11 @@ def grid_check_one_sided(grid_list, tournament, round_num):
 				grid.warnings.append(Sided(grid.teams[1], "opp", [grid.teams[0].past_sides.count("gov"), grid.teams[0].past_sides.count("opp")+1]))
 			if grid.teams[0].past_sides.count("gov") == len(grid.teams[0].past_sides):# or grid.teams[0].past_sides.count(False) == len(grid.teams[0].past_sides):
 				if round_num > 2:
-					interaction_modules.warn("ka;dslfjadsfdddddddddddd¥n¥n¥n¥n¥n¥n¥n¥n¥nn¥¥n¥n¥n¥n¥n")
+					#interaction_modules.warn("ka;dslfjadsfdddddddddddd¥n¥n¥n¥n¥n¥n¥n¥n¥nn¥¥n¥n¥n¥n¥n")
 					grid.warnings.append(AllSided(grid.teams[0], "gov", len(grid.teams[0].past_sides)+1))
 			if grid.teams[1].past_sides.count("opp") == len(grid.teams[1].past_sides):# or grid.teams[1].past_sides.count(True) == len(grid.teams[1].past_sides):
 				if round_num > 2:
-					grid.warnings.append(AllSided(grid.teams[1], "opp", len(grid.teams[0].past_sides)+1))
+					grid.warnings.append(AllSided(grid.teams[1], "opp", len(grid.teams[1].past_sides)+1))
 	else:
 		for i, grid in enumerate(grid_list):
 			og_sided_value = is_one_halfed(grid.teams[0], "og")

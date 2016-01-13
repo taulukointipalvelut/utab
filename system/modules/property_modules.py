@@ -2,6 +2,9 @@
 import math
 import itertools
 
+def perm(n, r):
+	return math.factorial(n)/math.factorial(n-r)
+
 def calc_scatter_indicator(grid_list):
 	institutions = []
 	for grid in grid_list:

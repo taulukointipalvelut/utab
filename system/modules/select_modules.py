@@ -74,7 +74,7 @@ def select_lattice2(lattice_list, team_list, cp_pair):
 		return grid_row
 
 def select_grid2(grid_list, team_list, cp_pair):#####????work well????
-	grid = find_min_grid(grid_list)
+	grid = find_min_grid(grid_list, cp_pair)
 	grid_list_teams_list = []
 	for k, team in enumerate(grid.teams):
 		grid_list_teams = []
@@ -106,6 +106,10 @@ def find_min_grid(grid_list, cp_pair):
 			return grid
 
 def find_max_grid(grid_list_teamxs, cp_pair):
+	print(cp_pair)
+	print()
+	print(len(grid_list_teamxs))
+	print()
 	grid_list = copy.copy(grid_list_teamxs)
 	grid_list.sort(key=lambda grid: ((cp_pair[0](grid), cp_pair[1](grid))), reverse=True)
 	for grid in grid_list:
@@ -129,7 +133,6 @@ def refresh_grids_for_adopt(grid_list):
 			#	grid.available = True
 			else:
 				grid.available = True
-
 
 def select_alg2(grid_list, round_num, team_list, cp_pair):#!!#picking up from the highly desired
 	selected_grid_list = []

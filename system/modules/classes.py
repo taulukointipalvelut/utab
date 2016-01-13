@@ -364,6 +364,12 @@ class Grid(GL):
 		self.bubble_ranking = 0
 		self.bubble = 10
 
+	def initialize(self):
+		self.past_match = 0
+		self.power_pairing = None
+		self.bubble_ranking = 0
+		self.bubble = 10
+
 	def __eq__(self, other):
 		if self.teams == other.teams:
 			return True
