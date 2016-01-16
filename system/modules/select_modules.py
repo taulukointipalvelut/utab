@@ -1,16 +1,15 @@
 # -*- coding: utf-8 -*-
 from .property_modules import *
-from .quick_modules import *
 from . import interaction_modules
 import copy
 import random
 
 def disavail_grids(grid_list, grid1, pid):
-	"""
+	"""#simpler
 	for grid2 in grid_list:
 		if grid1.related(grid2):
 			grid2.set_not_available(pid)
-	"""
+	"""#faster
 	if grid1.grid_type() == "Grid":
 		teams_names = [team.name for team in grid1.teams]
 		for grid2 in grid_list:
@@ -18,44 +17,6 @@ def disavail_grids(grid_list, grid1, pid):
 				if team2.name in teams_names:
 					grid2.set_not_available(pid)
 					break
-
-		"""
-		if len(grid_list[0].teams) == 2:
-			for grid2 in grid_list:
-				if grid2.teams[0] == grid1.teams[0]:
-					grid2.available = False
-				elif grid2.teams[1] == grid1.teams[0]:
-					grid2.available = False
-				elif grid2.teams[0] == grid1.teams[1]:
-					grid2.available = False
-				elif grid2.teams[1] == grid1.teams[1]:
-					grid2.available = False
-		else:
-			teams_names = [team.name for team in grid1.teams]
-			for grid2 in grid_list:
-				if grid2.teams[0].name in teams_names:
-					grid2.available = False
-				elif grid2.teams[1].name in teams_names:
-					grid2.available = False
-				elif grid2.teams[2].name in teams_names:
-					grid2.available = False
-				elif grid2.teams[3].name in teams_names:
-					grid2.available = False
-		"""
-		"""
-		for grid2 in grid_list:
-			if grid2.teams[0] in grid1.teams:
-				grid2.available = False
-			elif grid2.teams[1] in grid1.teams:
-				grid2.available = False
-			elif grid2.teams[2] in grid1.teams:
-				grid2.available = False
-			elif grid2.teams[3] in grid1.teams:
-				grid2.available = False
-		"""
-
-				#if set(grid2.teams) & set(grid1.teams):
-				#	grid2.available = False
 
 	elif grid1.grid_type() == "Lattice":
 		#c = 0
@@ -141,7 +102,7 @@ def refresh_grids_for_adopt(grid_list, *args):
 		elif grid_list[0].grid_type() == "Lattice":
 			#interaction_modules.warn(str(len([grid for grid in grid_list if grid.get_available(*args)])))
 			for grid in grid_list:
-				if True in ([not(team.available) for team in grid.grid.teams]+[grid.chair.absent]):
+				if (True in [not(team.available) for team in grid.grid.teams]) or grid.chair.absent:
 					grid.set_not_available(*args)
 				#elif len(list(set(grid.teams))) != len(grid.teams):
 				#	grid.available = True

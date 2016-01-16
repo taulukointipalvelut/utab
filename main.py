@@ -1,5 +1,5 @@
 # -*- coding: utf-8 -*-
-#bug: a team appears more than 2 times, grid 2 times in lattice
+#bug: a team appears more than 2 times, grid 2 times in lattice (IS the root cause the "disavail grids" ?)
 #Todo: mstat, more speed(alg3, 4), sort_adjudicators, type of adjudicators(trainee , panel , chair), adjudicators exchange de adj no basho kawaru
 #judge points distribution on team-win/lose, teamscore -adj ranking, adjscore -debater ranking, teamscore-teamranking, role-score distribution, power_pairing_strong, 
 from system.modules.internal_modules import *

@@ -115,7 +115,7 @@ class Debater:
 	def average(self, style_cfg):
 		score_weight = style_cfg["score_weight"]
 		average_list = []
-		for i in range(len(self.score_lists)):
+		for i in range(len(self.score_lists_sub)):
 			avrg_in_r = self.average_in_round(i+1, style_cfg)
 			if avrg_in_r != 'n/a':
 				average_list.append(avrg_in_r)
@@ -130,10 +130,10 @@ class Debater:
 		average_list = []
 		weight = 0
 		avrg = 0
-		if 'n/a' in self.score_lists[round_num-1]:
+		if 'n/a' in self.score_lists_sub[round_num-1]:
 			return 'n/a'
 		else:
-			for score, w in zip(self.score_lists[round_num-1], score_weight):
+			for score, w in zip(self.score_lists_sub[round_num-1], score_weight):
 				if score != 0:
 					avrg += score
 					weight += w
@@ -153,7 +153,7 @@ class Debater:
 		avrg = self.average(style_cfg)
 		sd = 0
 		n = 0
-		for i in range(len(self.score_lists)):
+		for i in range(len(self.score_lists_sub)):
 			avrg_in_r = self.average_in_round(i, style_cfg)
 			if avrg_in_r != 'n/a':
 				sd += (avrg_in_r-avrg)**2
@@ -168,6 +168,10 @@ class Debater:
 		self.score_lists_sub.append(score_list)
 		self.scores.append(score)
 		self.scores_sub.append(score)
+
+	def dummy_finishing_process(self, style_cfg):
+		self.score_lists_sub.append(['n/a']*len(style_cfg["score_weight"]))
+		self.scores_sub.append('n/a')
 
 	def __eq__(self, other):
 		return self.code == other
