@@ -129,7 +129,7 @@ def read_and_process_result(round_num, tournament, style_cfg, filename_results):
 
 	rest_team_list = [t for t in tournament["team_list"] if t not in team_list_temp]
 	for team in rest_team_list:
-		team.dummy_finishing_process(team_num)
+		team.dummy_finishing_process()
 
 def export_random_result(allocations, round_num, style_cfg, filename):
 	if os.path.exists(filename):

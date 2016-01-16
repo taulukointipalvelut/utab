@@ -1,10 +1,16 @@
 # -*- coding: utf-8 -*-
 from .property_modules import *
 from .quick_modules import *
+from . import interaction_modules
 import copy
 import random
 
 def disavail_grids(grid_list, grid1, pid):
+	"""
+	for grid2 in grid_list:
+		if grid1.related(grid2):
+			grid2.set_not_available(pid)
+	"""
 	if grid1.grid_type() == "Grid":
 		teams_names = [team.name for team in grid1.teams]
 		for grid2 in grid_list:
@@ -52,16 +58,21 @@ def disavail_grids(grid_list, grid1, pid):
 				#	grid2.available = False
 
 	elif grid1.grid_type() == "Lattice":
+		#c = 0
 		for grid2 in grid_list:
 			if grid2.chair == grid1.chair:
+				#c += 1
 				grid2.set_not_available(pid)
 			elif grid2.grid == grid1.grid:
 				grid2.set_not_available(pid)
+		#		c += 1
+		#interaction_modules.warn(str(c))
 		#gridss = [grid.grid for grid in grid_list]
 		#print [[grid.teams[0].name, grid.teams[1].name] for grid in gridss]
 		#show_lattice_list(grid_list)
 
 def select_lattice2(lattice_list, cp_pair, pid):
+	#interaction_modules.warn("called"+str(pid))
 	lattice = find_min_grid(lattice_list, cp_pair, pid)
 	lattice_list_adjs = [lattice2 for lattice2 in lattice_list if lattice2.grid == lattice.grid]
 	lattice_list_grids = [lattice1 for lattice1 in lattice_list if lattice1.chair == lattice.chair]
@@ -117,22 +128,26 @@ def find_max_grid(grid_list_teamxs, cp_pair, pid):
 			return grid.comparison1, grid
 
 def refresh_grids_for_adopt(grid_list, *args):
-	for grid in grid_list:
-		if grid.grid_type() == "Grid":
-			if True in [not(team.available) for team in grid.teams]:
-				grid.set_not_available(*args)
-			#elif len(list(set(grid.teams))) != len(grid.teams):
-			#	grid.available = True
-			else:
-				grid.set_available(*args)
+	if grid_list:
+		if grid_list[0].grid_type() == "Grid":
+			for grid in grid_list:
+				if True in [not(team.available) for team in grid.teams]:
+					grid.set_not_available(*args)
+				#elif len(list(set(grid.teams))) != len(grid.teams):
+				#	grid.available = True
+				else:
+					grid.set_available(*args)
 
-		elif grid.grid_type() == "Lattice":
-			if True in ([not(team.available) for team in grid.grid.teams]+[grid.chair.absent]):
-				grid.set_not_available(*args)
-			#elif len(list(set(grid.teams))) != len(grid.teams):
-			#	grid.available = True
-			else:
-				grid.set_available(*args)
+		elif grid_list[0].grid_type() == "Lattice":
+			#interaction_modules.warn(str(len([grid for grid in grid_list if grid.get_available(*args)])))
+			for grid in grid_list:
+				if True in ([not(team.available) for team in grid.grid.teams]+[grid.chair.absent]):
+					grid.set_not_available(*args)
+				#elif len(list(set(grid.teams))) != len(grid.teams):
+				#	grid.available = True
+				else:
+					grid.set_available(*args)
+			#interaction_modules.warn(str(len([grid for grid in grid_list if grid.get_available(*args)])))
 
 def select_alg2(pid, grid_list, round_num, team_list, cp_pair):#!!#picking up from the highly desired
 	selected_grid_list = []

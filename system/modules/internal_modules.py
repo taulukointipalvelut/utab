@@ -166,8 +166,9 @@ def create_lattice_list(matchups, adjudicator_list):
 			lattice_list.append(Lattice(grid, chair))
 
 	for lattice in lattice_list:
-		if False in [t.available for t in lattice.grid.teams] or lattice.chair.absent:
+		if (False in [t.available for t in lattice.grid.teams]) or lattice.chair.absent:
 			lattice.set_not_available()
+	#interaction_modules.warn(str(len(lattice_list)))#db
 	return lattice_list
 
 def return_lattice_list_info(selected_lattice_list, tournament, constants_of_adj, round_num, comment, teamnum):
@@ -176,8 +177,9 @@ def return_lattice_list_info(selected_lattice_list, tournament, constants_of_adj
 	errors = lattice_list_errors(selected_lattice_list, tournament, round_num)
 	selected_lattice_list_with_info.large_warnings.extend(errors)
 	for lattice in selected_lattice_list:
-		selected_lattice_list_with_info.large_warnings.extend(lattice.large_warnings)
-	selected_lattice_list_with_info.large_warnings = [large_warning for large_warning in selected_lattice_list_with_info.large_warnings if large_warning != '']
+		for warn in lattice.warnings:
+			selected_lattice_list_with_info.large_warnings.append(warn.longwarning())
+	selected_lattice_list_with_info.large_warnings.sort()
 	selected_lattice_list_with_info.large_warnings.sort()
 	selected_lattice_list_with_info.strong_strong_indicator = calc_str_str_indicator(selected_lattice_list, teamnum)
 	selected_lattice_list_with_info.num_of_warnings = calc_num_of_warnings(selected_lattice_list)
@@ -217,6 +219,7 @@ def return_selected_lattice_lists(lattice_list, round_num, tournament, constants
 	for i, cp_pair in enumerate(cp_pair_list):
 		for j, alg in enumerate(alg_list):
 			alg_wrapped = wrap(alg)
+			#interaction_modules.warn(str(i*len(alg_list)+j))
 			t = threading.Thread(target=alg_wrapped, args=(es, new_selected_lattice_lists, i*len(alg_list)+j, lattice_list, round_num, tournament["adjudicator_list"], cp_pair))
 			t.setDaemon(True)
 			t.start()
@@ -233,6 +236,7 @@ def return_selected_lattice_lists(lattice_list, round_num, tournament, constants
 	interaction_modules.progress("")
 
 	for selected_lattice_list in selected_lattice_lists:
+		#if len(selected_lattice_list) == 19: interaction_modules.warn("warn")#db
 		selected_lattice_list.sort(key=lambda lattice: lattice.__hash__())
 
 	selected_lattice_lists2 = []
@@ -377,6 +381,7 @@ def filtration(grid_list, round_num, tournament, filter_lists):#max_filters = 20
 	divided_grid_list_list = [grid_list[:int(all_len/4)], grid_list[int(all_len/4):int(all_len*2/4)], grid_list[int(all_len*2/4):int(all_len*3/4)], grid_list[int(all_len*3/4):]]
 	es = [threading.Event() for i in range(4)]
 	#random.shuffle(function_list)
+	
 	def func_wrapper(func):
 		def func2(i, *args):
 			func(*args)
@@ -397,7 +402,20 @@ def filtration(grid_list, round_num, tournament, filter_lists):#max_filters = 20
 		#interaction_modules.progress("")
 
 	while True:
-		if False not in [e.isSet() for e in es]:break
+		if False not in [e.isSet() for e in es]:
+			break
+		else:
+			time.sleep(0.5)
+	"""
+	for k, function in enumerate(function_list):
+		#interaction_modules.progress_bar2(k+1, len(function_list))
+		function(grid_list, round_num, tournament["team_list"], k)
+		#print str(function)#passpass
+		#show_adoptbits(team_list, grid_list, k)
+		#print
+		#show_adoptbitslong(team_list, grid_list, k)
+	#interaction_modules.progress("")
+	"""
 
 def find_grid_from_grid_list(grid_list, teams):
 	for grid in grid_list:
@@ -967,6 +985,8 @@ def set_venue(allocations, venue_list):
 	available_venue_list.sort(key=lambda venue:venue.priority)
 	for lattice, venue in zip(allocations, available_venue_list):
 		lattice.venue = venue
+	#print(len(available_venue_list))
+	#print(len(allocations))
 	allocations.sort(key=lambda lattice: lattice.venue.name)
 
 def set_panel(allocations, adjudicator_list):
@@ -1391,6 +1411,16 @@ def lattice_list_errors(selected_lattice_list, tournament, round_num):
 			else:
 				large_warnings.append("attention : an adjudicator is absent :"+str(k))
 
+	multi3 = {grid:0 for grid in [lattice.grid for lattice in selected_lattice_list]}
+
+	for lattice in selected_lattice_list:
+		multi3[lattice.grid] += 1
+
+	for k, v in list(multi3.items()):
+		if v > 1:
+			large_warnings.append("error : a grid appears more than two times :"+str(k)+": "+str(v))
+			#large_warnings.append(str(sorted([adj.code for adj in tournament["adjudicator_list"]])))
+
 	max_active_num = 0
 	for adjudicator in tournament["adjudicator_list"]:
 		if adjudicator.active_num > max_active_num:
@@ -1429,38 +1459,30 @@ def lattice_check_conflict(lattice_list):
 			conflicting_insti2 = set(lattice.grid.teams[1].institutions) & set(lattice.chair.institutions)
 
 			if list(conflicting_insti1 | conflicting_insti2):
-				lattice.large_warnings.append("warning : a judge watching a team of his/her conflict :"+str(lattice.grid.teams[0].institutions)+"-"+str(lattice.grid.teams[1].institutions)+": "+str(lattice.chair.institutions))
-				lattice.warnings.append("wrn(insti conflict)")
+				lattice.warnings.append(InstitutionConflict(lattice.chair, lattice.grid.teams))
 			if lattice.grid.teams[0].name in lattice.chair.conflict_teams or lattice.grid.teams[1].name in lattice.chair.conflict_teams:
-				lattice.large_warnings.append("warning : a judge watching a team of his/her personal conflict :"+str(lattice.grid.teams[0].name)+"-"+str(lattice.grid.teams[1].name)+": "+str(lattice.chair.name))
-				lattice.warnings.append("wrn(perso conflict)")
+				lattice.warnings.append(PersonalConflict(lattice.chair, lattice.grid.teams))
 
 			if len(lattice.panel) == 2:
 				conflicting_insti1 = set(lattice.grid.teams[0].institutions) & set(lattice.panel[0].institutions)
 				conflicting_insti2 = set(lattice.grid.teams[1].institutions) & set(lattice.panel[0].institutions)
 				if list(conflicting_insti1 | conflicting_insti2):
-					lattice.large_warnings.append("warn : a panel watching a team of his/her conflict :"+str(lattice.grid.teams[0].institutions)+"-"+str(lattice.grid.teams[1].institutions)+": "+str(lattice.panel[0].institutions))
-					lattice.warnings.append("wrn(insti conflict)")
+					lattice.warnings.append(InstitutionConflict(lattice.panel[0], lattice.grid.teams))
 				if lattice.grid.teams[0].name in lattice.panel[0].conflict_teams or lattice.grid.teams[1].name in lattice.panel[0].conflict_teams:
-					lattice.large_warnings.append("warning : a panel watching a team of his/her personal conflict :"+str(lattice.grid.teams[0].name)+"-"+str(lattice.grid.teams[1].name)+": "+str(lattice.panel[0].name))
-					lattice.warnings.append("wrn(perso conflict)")
+					lattice.warnings.append(PersonalConflict(lattice.panel[0], lattice.grid.teams))
 				conflicting_insti1 = set(lattice.grid.teams[0].institutions) & set(lattice.panel[1].institutions)
 				conflicting_insti2 = set(lattice.grid.teams[1].institutions) & set(lattice.panel[1].institutions)
 				if list(conflicting_insti1 | conflicting_insti2):
-					lattice.large_warnings.append("warning : a panel watching a team of his/her conflict :"+str(lattice.grid.teams[0].institutions)+"-"+str(lattice.grid.teams[1].institutions)+": "+str(lattice.panel[1].institutions))
-					lattice.warnings.append("wrn(insti conflict)")
+					lattice.warnings.append(InstitutionConflict(lattice.panel[1], lattice.grid.teams))
 				if lattice.grid.teams[0].name in lattice.panel[1].conflict_teams or lattice.grid.teams[1].name in lattice.panel[1].conflict_teams:
-					lattice.large_warnings.append("warning : a panel watching a team of his/her personal conflict :"+str(lattice.grid.teams[0].name)+"-"+str(lattice.grid.teams[1].name)+": "+str(lattice.panel[1].name))
-					lattice.warnings.append("wrn(perso conflict)")
+					lattice.warnings.append(PersonalConflict(lattice.panel[1], lattice.grid.teams))
 			elif len(lattice.panel) == 1:
 				conflicting_insti1 = set(lattice.grid.teams[0].institutions) & set(lattice.panel[0].institutions)
 				conflicting_insti2 = set(lattice.grid.teams[1].institutions) & set(lattice.panel[0].institutions)
 				if list(conflicting_insti1 | conflicting_insti2):
-					lattice.large_warnings.append("warning : a panel watching a team of his/her conflict :"+str(lattice.grid.teams[0].institutions)+"-"+str(lattice.grid.teams[1].institutions)+": "+str(lattice.panel[0].institutions))
-					latticewarnings.append("wrn(insti conflict)")
+					lattice.warnings.append(InstitutionConflict(lattice.panel[0], lattice.grid.teams))
 				if lattice.grid.teams[0].name in lattice.panel[0].conflict_teams or lattice.grid.teams[1].name in lattice.panel[0].conflict_teams:
-					lattice.large_warnings.append("warning : a panel watching a team of his/her personal conflict :"+str(lattice.grid.teams[0].name)+"-"+str(lattice.grid.teams[1].name)+": "+str(lattice.panel[0].name))
-					lattice.warnings.append("wrn(perso conflict)")
+					lattice.warnings.append(PersonalConflict(lattice.panel[0], lattice.grid.teams))
 	else:
 		for i, lattice in enumerate(lattice_list):
 			conflicting_insti1 = set(lattice.grid.teams[0].institutions) & set(lattice.chair.institutions)
@@ -1469,11 +1491,9 @@ def lattice_check_conflict(lattice_list):
 			conflicting_insti4 = set(lattice.grid.teams[3].institutions) & set(lattice.chair.institutions)
 
 			if list(conflicting_insti1 | conflicting_insti2 | conflicting_insti3 | conflicting_insti4):
-				lattice.large_warnings.append("warning : a judge watching a team of his/her conflict :"+str(lattice.grid.teams[0].institutions)+"-"+str(lattice.grid.teams[1].institutions)+"-"+str(lattice.grid.teams[2].institutions)+"-"+str(lattice.grid.teams[3].institutions)+": "+str(lattice.chair.institutions))
-				lattice.warnings.append("wrn(insti conflict)")
+				lattice.warnings.append(InstitutionConflict(lattice.chair, lattice.grid.teams))
 			if lattice.grid.teams[0].name in lattice.chair.conflict_teams or lattice.grid.teams[1].name in lattice.chair.conflict_teams or lattice.grid.teams[2].name in lattice.chair.conflict_teams or lattice.grid.teams[3].name in lattice.chair.conflict_teams:
-				lattice.large_warnings.append("warning : a judge watching a team of his/her personal conflict :"+str(lattice.grid.teams[0].name)+"-"+str(lattice.grid.teams[1].name)+"-"+str(lattice.grid.teams[2].name)+"-"+str(lattice.grid.teams[3].name)+": "+str(lattice.chair.name))
-				lattice.warnings.append("wrn(perso conflict)")
+				lattice.warnings.append(PersonalConflict(lattice.chair, lattice.grid.teams))
 
 			if len(lattice.panel) == 2:
 				conflicting_insti1 = set(lattice.grid.teams[0].institutions) & set(lattice.panel[0].institutions)
@@ -1481,89 +1501,64 @@ def lattice_check_conflict(lattice_list):
 				conflicting_insti3 = set(lattice.grid.teams[2].institutions) & set(lattice.panel[0].institutions)
 				conflicting_insti4 = set(lattice.grid.teams[3].institutions) & set(lattice.panel[0].institutions)
 				if list(conflicting_insti1 | conflicting_insti2 | conflicting_insti3 | conflicting_insti4):
-					lattice.large_warnings.append("warning : a panel watching a team of his/her conflict :"+str(lattice.grid.teams[0].institutions)+"-"+str(lattice.grid.teams[1].institutions)+"-"+str(lattice.grid.teams[2].institutions)+"-"+str(lattice.grid.teams[3].institutions)+": "+str(lattice.panel[0].institutions))
-					lattice.warnings.append("wrn(insti conflict)")
+					lattice.warnings.append(InstitutionConflict(lattice.panel[0], lattice.grid.teams))
 				if lattice.grid.teams[0].name in lattice.panel[0].conflict_teams or lattice.grid.teams[1].name in lattice.panel[0].conflict_teams or lattice.grid.teams[2].name in lattice.panel[0].conflict_teams or lattice.grid.teams[3].name in lattice.panel[0].conflict_teams:
-					lattice.large_warnings.append("warning : a panel watching a team of his/her personal conflict :"+str(lattice.grid.teams[0].name)+"-"+str(lattice.grid.teams[1].name)+"-"+str(lattice.grid.teams[2].name)+"-"+str(lattice.grid.teams[3].name)+": "+str(lattice.panel[0].name))
-					lattice.warnings.append("wrn(perso conflict)")
+					lattice.warnings.append(PersonalConflict(lattice.panel[0], lattice.grid.teams))
 				conflicting_insti1 = set(lattice.grid.teams[0].institutions) & set(lattice.panel[1].institutions)
 				conflicting_insti2 = set(lattice.grid.teams[1].institutions) & set(lattice.panel[1].institutions)
 				conflicting_insti3 = set(lattice.grid.teams[2].institutions) & set(lattice.panel[1].institutions)
 				conflicting_insti4 = set(lattice.grid.teams[3].institutions) & set(lattice.panel[1].institutions)
 				if list(conflicting_insti1 | conflicting_insti2 | conflicting_insti3 | conflicting_insti4):
-					lattice.large_warnings.append("warning : a panel watching a team of his/her conflict :"+str(lattice.grid.teams[0].institutions)+"-"+str(lattice.grid.teams[1].institutions)+"-"+str(lattice.grid.teams[2].institutions)+"-"+str(lattice.grid.teams[3].institutions)+": "+str(lattice.panel[1].institutions))
-					lattice.warnings.append("wrn(insti conflict)")
+					lattice.warnings.append(InstitutionConflict(lattice.panel[1], lattice.grid.teams))
 				if lattice.grid.teams[0].name in lattice.panel[1].conflict_teams or lattice.grid.teams[1].name in lattice.panel[1].conflict_teams or lattice.grid.teams[2].name in lattice.panel[1].conflict_teams or lattice.grid.teams[3].name in lattice.panel[1].conflict_teams:
-					lattice.large_warnings.append("warning : a panel watching a team of his/her personal conflict :"+str(lattice.grid.teams[0].name)+"-"+str(lattice.grid.teams[1].name)+"-"+str(lattice.grid.teams[2].name)+"-"+str(lattice.grid.teams[3].name)+": "+str(lattice.panel[1].name))
-					lattice.warnings.append("wrn(perso conflict)")
+					lattice.warnings.append(PersonalConflict(lattice.panel[1], lattice.grid.teams))
 			elif len(lattice.panel) == 1:
 				conflicting_insti1 = set(lattice.grid.teams[0].institutions) & set(lattice.panel[0].institutions)
 				conflicting_insti2 = set(lattice.grid.teams[1].institutions) & set(lattice.panel[0].institutions)
 				conflicting_insti3 = set(lattice.grid.teams[2].institutions) & set(lattice.panel[0].institutions)
 				conflicting_insti4 = set(lattice.grid.teams[3].institutions) & set(lattice.panel[0].institutions)
 				if list(conflicting_insti1 | conflicting_insti2 | conflicting_insti3 | conflicting_insti4):
-					lattice.large_warnings.append("warning : a panel watching a team of his/her conflict :"+str(lattice.grid.teams[0].institutions)+"-"+str(lattice.grid.teams[1].institutions)+"-"+str(lattice.grid.teams[2].institutions)+"-"+str(lattice.grid.teams[3].institutions)+": "+str(lattice.panel[0].institutions))
-					lattice.warnings.append("wrn(insti conflict)")
+					lattice.warnings.append(InstitutionConflict(lattice.panel[0], lattice.grid.teams))
 				if lattice.grid.teams[0].name in lattice.panel[0].conflict_teams or lattice.grid.teams[1].name in lattice.panel[0].conflict_teams or lattice.grid.teams[2].name in lattice.panel[0].conflict_teams or lattice.grid.teams[3].name in lattice.panel[0].conflict_teams:
-					lattice.large_warnings.append("warning : a panel watching a team of his/her personal conflict :"+str(lattice.grid.teams[0].name)+"-"+str(lattice.grid.teams[1].name)+"-"+str(lattice.grid.teams[2].name)+"-"+str(lattice.grid.teams[3].name)+": "+str(lattice.panel[0].name))
-					lattice.warnings.append("wrn(perso conflict)")
+					lattice.warnings.append(PersonalConflict(lattice.panel[0], lattice.grid.teams))
 
 def lattice_check_bubble_round(lattice_list, constants_of_adj, round_num):
 	if len(lattice_list[0].grid.teams) == 2:
 		for i, lattice in enumerate(lattice_list):
 			if constants_of_adj[round_num-1]["des_priori_bubble"] != 0:
 				if lattice.grid.bubble < 5:
-					lattice.large_warnings.append("attention : bubble round :"+lattice.grid.teams[0].name+"-"+lattice.grid.teams[1].name+": "+str(sum(lattice.grid.teams[0].wins))+"-"+str(sum(lattice.grid.teams[1].wins)))
-					lattice.warnings.append("att(bbl {0:1d}:{1:1d})".format(sum(lattice.grid.teams[0].wins), sum(lattice.grid.teams[1].wins)))
+					lattice.warnings.append(BubbleRound(lattice.grid.teams))
 		
 	else:
 		for i, lattice in enumerate(lattice_list):
 			if constants_of_adj[round_num-1]["des_priori_bubble"] != 0:
 				if lattice.grid.bubble < 5:
-					lattice.large_warnings.append("attention : bubble round :"+lattice.grid.teams[0].name+"-"+lattice.grid.teams[1].name+": "+str(sum(lattice.grid.teams[0].wins))+"-"+str(sum(lattice.grid.teams[1].wins)))
-					lattice.large_warnings.append("                          "+lattice.grid.teams[2].name+"-"+lattice.grid.teams[3].name+": "+str(sum(lattice.grid.teams[2].wins))+"-"+str(sum(lattice.grid.teams[3].wins)))
-					lattice.warnings.append("att(bbl {0:1d}:{1:1d}:{2:1d}:{3:1d})".format(sum(lattice.grid.teams[0].wins), sum(lattice.grid.teams[1].wins), sum(lattice.grid.teams[2].wins), sum(lattice.grid.teams[3].wins)))
+					lattice.warnings.append(BubbleRound(lattice.grid.teams))
 		
 def lattice_check_same_round(lattice_list):
 	if len(lattice_list[0].grid.teams) == 2:
 		for i, lattice in enumerate(lattice_list):
 			if lattice.grid.teams[0] in lattice.chair.watched_teams or lattice.grid.teams[1] in lattice.chair.watched_teams:
-				watched_teams = [team.name for team in lattice.chair.watched_teams]
-				lattice.large_warnings.append("warning : a judge watching a team again :"+str(lattice.grid.teams[0].name)+"-"+str(lattice.grid.teams[1].name)+": "+str(lattice.chair.name)+": "+str(watched_teams))
-				lattice.warnings.append("wrn(watching again)")
+				lattice.warnings.append(WatchingAgain(lattice.chair, lattice.grid.teams))
 			if len(lattice.panel) == 2:
 				if lattice.grid.teams[0] in lattice.panel[0].watched_teams or lattice.grid.teams[1] in lattice.panel[0].watched_teams:
-					watched_teams = [team.name for team in lattice.panel[0].watched_teams]
-					lattice.large_warnings.append("warning : a panel watching a team again :"+str(lattice.grid.teams[0].name)+"-"+str(lattice.grid.teams[1].name)+": "+str(lattice.panel[0].name)+": "+str(watched_teams))
-					lattice.warnings.append("wrn(watching again)")
+					lattice.warnings.append(WatchingAgain(lattice.panel[0], lattice.grid.teams))
 				if lattice.grid.teams[0] in lattice.panel[1].watched_teams or lattice.grid.teams[1] in lattice.panel[1].watched_teams:
-					watched_teams = [team.name for team in lattice.panel[1].watched_teams]
-					lattice.large_warnings.append("warning : a panel watching a team again :"+str(lattice.grid.teams[0].name)+"-"+str(lattice.grid.teams[1].name)+": "+str(lattice.panel[1].name)+": "+str(watched_teams))
-					lattice.warnings.append("wrn(watching again)")
+					lattice.warnings.append(WatchingAgain(lattice.panel[1], lattice.grid.teams))
 			elif len(lattice.panel) == 1:
 				if lattice.grid.teams[0] in lattice.panel[0].watched_teams or lattice.grid.teams[1] in lattice.panel[0].watched_teams:
-					watched_teams = [team.name for team in lattice.panel[0].watched_teams]
-					lattice.large_warnings.append("warning : a panel watching a team again :"+str(lattice.grid.teams[0].name)+"-"+str(lattice.grid.teams[1].name)+": "+str(lattice.panel[0].name)+": "+str(watched_teams))
-					lattice.warnings.append("wrn(watching again)")
+					lattice.warnings.append(WatchingAgain(lattice.panel[0], lattice.grid.teams))
 	else:
 		for i, lattice in enumerate(lattice_list):
 			if lattice.grid.teams[0] in lattice.chair.watched_teams or lattice.grid.teams[1] in lattice.chair.watched_teams or lattice.grid.teams[2] in lattice.chair.watched_teams or lattice.grid.teams[3] in lattice.chair.watched_teams:
-				watched_teams = [team.name for team in lattice.chair.watched_teams]
-				lattice.large_warnings.append("warning : a judge watching a team again :"+str(lattice.grid.teams[0].name)+"-"+str(lattice.grid.teams[1].name)+"-"+str(lattice.grid.teams[2].name)+"-"+str(lattice.grid.teams[3].name)+": "+str(lattice.chair.name)+": "+str(watched_teams))
-				lattice.warnings.append("wrn(watching again)")
+				lattice.warnings.append(WatchingAgain(lattice.chair, lattice.grid.teams))
 			if len(lattice.panel) == 2:
 				if lattice.grid.teams[0] in lattice.panel[0].watched_teams or lattice.grid.teams[1] in lattice.panel[0].watched_teams or lattice.grid.teams[2] in lattice.panel[0].watched_teams or lattice.grid.teams[3] in lattice.panel[0].watched_teams:
-					watched_teams = [team.name for team in lattice.panel[0].watched_teams]
-					lattice.large_warnings.append("warning : a panel watching a team again :"+str(lattice.grid.teams[0].name)+"-"+str(lattice.grid.teams[1].name)+"-"+str(lattice.grid.teams[2].name)+"-"+str(lattice.grid.teams[3].name)+": "+str(lattice.panel[0].name)+": "+str(watched_teams))
-					lattice.warnings.append("wrn(watching again)")
+					lattice.warnings.append(WatchingAgain(lattice.panel[0], lattice.grid.teams))
 				if lattice.grid.teams[0] in lattice.panel[1].watched_teams or lattice.grid.teams[1] in lattice.panel[1].watched_teams or lattice.grid.teams[2] in lattice.panel[1].watched_teams or lattice.grid.teams[3] in lattice.panel[1].watched_teams:
-					watched_teams = [team.name for team in lattice.panel[1].watched_teams]
-					lattice.large_warnings.append("warning : a panel watching a team again :"+str(lattice.grid.teams[0].name)+"-"+str(lattice.grid.teams[1].name)+"-"+str(lattice.grid.teams[2].name)+"-"+str(lattice.grid.teams[3].name)+": "+str(lattice.panel[1].name)+": "+str(watched_teams))
-					lattice.warnings.append("wrn(watching again)")
+					lattice.warnings.append(WatchingAgain(lattice.panel[1], lattice.grid.teams))
 			elif len(lattice.panel) == 1:
 				if lattice.grid.teams[0] in lattice.panel[0].watched_teams or lattice.grid.teams[1] in lattice.panel[0].watched_teams or lattice.grid.teams[2] in lattice.panel[0].watched_teams or lattice.grid.teams[3] in lattice.panel[0].watched_teams:
-					watched_teams = [team.name for team in lattice.panel[0].watched_teams]
-					lattice.large_warnings.append("warning : a panel watching a team again :"+str(lattice.grid.teams[0].name)+"-"+str(lattice.grid.teams[1].name)+"-"+str(lattice.grid.teams[2].name)+"-"+str(lattice.grid.teams[3].name)+": "+str(lattice.panel[0].name)+": "+str(watched_teams))
-					lattice.warnings.append("wrn(watching again)")
+					lattice.warnings.append(WatchingAgain(lattice.panel[0], lattice.grid.teams))
 
 pass

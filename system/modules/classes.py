@@ -218,12 +218,16 @@ class Adjudicator:
 		self.active = False
 		self.evaluation = 0
 		self.conflict_teams = [conflict_team for conflict_team in conflict_teams if conflict_team != '']
-
+	"""
 	def __hash__(self):
 		hash_value = self.code + (self.ranking<<10) + (int(self.reputation)<<13) + (int(self.judge_test)<<16)
 		for k, institution in enumerate(self.institutions):
 			hash_value += len(institution)<<(20+k*10)
 		return hash_value
+	"""
+
+	def __hash__(self):
+		return self.code
 
 	def average(self):
 		if len(self.scores) == 0:
@@ -380,10 +384,18 @@ class Grid(GL):
 		self.bubble = 10
 
 	def initialize(self):
+		GL.__init__(self)
 		self.past_match = 0
 		self.power_pairing = None
 		self.bubble_ranking = 0
 		self.bubble = 10
+
+	def related(self, grid2):
+		for team in self.teams:
+			if team in grid2.teams:
+				return True
+		else:
+			return False
 
 	def __eq__(self, other):
 		if self.teams == other.teams:
@@ -426,14 +438,20 @@ class Lattice(GL):
 		#self.conflict = False
 		#self.personal_conflict = False
 
+	def related(self, lattice2):
+		if self.chair == lattice2.chair:
+			return True
+		else:
+			return self.grid.related(lattice2.grid)
+
 	def __eq__(self, other):
-		if self.grid.teams == other.grid.teams and self.chair == other.chair:
+		if self.chair == other.chair and self.grid.teams == other.grid.teams:
 			return True
 		else:
 			return False
 
 	def __ne__(self, other):
-		if self.grid.teams != other.grid.teams or self.chair != other.chair:
+		if self.chair != other.chair or self.grid.teams != other.grid.teams:
 			return True
 		else:
 			return False
@@ -445,7 +463,7 @@ class Lattice(GL):
 		return hash_value
 
 	def __str__(self):
-		string = self.chair.name + ":" if chair else ""
+		string = self.chair.name + ":" if self.chair else ""
 		for team in self.grid.teams:
 			string = string + team.name
 		return string
@@ -552,8 +570,59 @@ class PowerPairing(Exception):
 		return "warning : stronger vs weaker team, {0:12s}:{1:12s}, ranking difference: {2:d}%, wins: {3:d}-{4:d}".format(self.team1.name, self.team2.name, self.difference, sum(self.team1.wins), sum(self.team2.wins))
 
 
+class PersonalConflict(Exception):
+	def __init__(self, adjudicator, teams):
+		self.adjudicator = adjudicator
+		self.teams = teams
 
+	def __str__(self):
+		return self.shortwarning()
 
+	def shortwarning(self):
+		return "wrn(perso conflict)"
 
+	def longwarning(self):
+		return "warning : a judge watching a team of his/her personal conflict :"+"-".join([t.name for t in self.teams])+": "+str(self.adjudicator.conflict_teams)
+
+class InstitutionConflict(Exception):
+	def __init__(self, adjudicator, teams):
+		self.adjudicator = adjudicator
+		self.teams = teams
+
+	def __str__(self):
+		return self.shortwarning()
+
+	def shortwarning(self):
+		return "wrn(insti conflict)"
+
+	def longwarning(self):
+		return "warning : a judge watching a team of his/her conflict :"+"-".join([t.name for t in self.teams])+": "+str(self.adjudicator.institutions)
+
+class BubbleRound(Exception):
+	def __init__(self, teams):
+		self.teams = teams
+
+	def __str__(self):
+		return self.shortwarning()
+
+	def shortwarning(self):
+		return "att(bbl "+":".join([str(sum(t.wins)) for t in self.teams])+")"
+
+	def longwarning(self):
+		return "attention : bubble round :"+"-".join([t.name for t in self.teams])+": "+"-".join([str(sum(t.wins)) for t in self.teams])
+
+class WatchingAgain(Exception):
+	def __init__(self, adjudicator, teams):
+		self.adjudicator = adjudicator
+		self.teams = teams
+
+	def __str__(self):
+		return self.shortwarning()
+
+	def shortwarning(self):
+		return "wrn(watching again)"
+
+	def longwarning(self):
+		return "warning : a judge watching a team again :"+"-".join([t.name for t in self.teams])+": "+self.adjudicator.name+"("+",".join([t.name for t in self.adjudicator.watched_teams])+")"
 
 

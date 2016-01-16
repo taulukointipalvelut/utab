@@ -190,8 +190,7 @@ def show_matchups_by_lattice(selected_lattice_list_with_info_origin, round_num, 
 				line = text_1+"|"+text_2+"(panel: %-20.20s, %-20.20s)"%("", "")
 
 			for warning in lattice.warnings:
-				warning += ","
-				line = line + "\033[31m"+warning+"\033[0m"
+				line = line + " \033[31m"+str(warning)+"\033[0m"
 			interaction_modules.commandline(line)
 		interaction_modules.commandline("")
 	else:
@@ -256,8 +255,7 @@ def show_matchups_by_lattice(selected_lattice_list_with_info_origin, round_num, 
 				line = text_1+"|"+text_2+"(panel: %-20.20s, %-20.20s)"%("", "")
 				line2 = text_1d+"|"
 			for warning in lattice.warnings:
-				warning += ","
-				line2 = line2 + "\033[31m"+warning+"\033[0m"
+				line2 = line2 + " \033[31m"+str(warning)+"\033[0m"
 			interaction_modules.commandline(line1)
 			interaction_modules.commandline(line2)
 			interaction_modules.commandline("--------------------------------------------")

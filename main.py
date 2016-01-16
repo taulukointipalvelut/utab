@@ -1,4 +1,5 @@
 # -*- coding: utf-8 -*-
+#bug: a team appears more than 2 times, grid 2 times in lattice
 #Todo: mstat, more speed(alg3, 4), sort_adjudicators, type of adjudicators(trainee , panel , chair), adjudicators exchange de adj no basho kawaru
 #judge points distribution on team-win/lose, teamscore -adj ranking, adjscore -debater ranking, teamscore-teamranking, role-score distribution, power_pairing_strong, 
 from system.modules.internal_modules import *
@@ -583,7 +584,7 @@ def prompt_before(grid_list, tournament, fnames, teamnum, debater_num_per_team, 
 				venue_name = venue_name.strip()
 				priority = int(input("venue priority [1, 3] > "))
 
-				tournament["venue_list"].append(Venue(venue_name, priority))
+				tournament["venue_list"].append(Venue(len(tournament["venue_list"]), venue_name, priority))
 				interaction_modules.progress(venue_name + " was added to venues successfully(priority:"+str(priority)+")")
 			except:
 				interaction_modules.warn("Unexpected error:", sys.exc_info()[0])
