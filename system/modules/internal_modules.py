@@ -167,7 +167,7 @@ def create_lattice_list(matchups, adjudicator_list):
 
 	for lattice in lattice_list:
 		if False in [t.available for t in lattice.grid.teams] or lattice.chair.absent:
-			lattice.available = False
+			lattice.set_not_available()
 	return lattice_list
 
 def return_lattice_list_info(selected_lattice_list, tournament, constants_of_adj, round_num, comment, teamnum):
@@ -202,14 +202,34 @@ def return_selected_lattice_lists(lattice_list, round_num, tournament, constants
 	cp_pair_list = [(cp1_small, cp2_small), (cp2_small, cp1_small), (cp1_long, cp2_long), (cp2_long, cp1_long), (cp1_strict, cp2_strict), (cp2_strict, cp1_strict), (cp1_weight, cp2_weight), (cp2_weight, cp1_weight)]
 
 
-	entire_length = len(alg_list) * 8
+	entire_length = len(alg_list) * len(cp_pair_list)
 	c = 1
-	for cp_pair in cp_pair_list:
-		for alg in alg_list:
-			interaction_modules.progress_bar2(c, entire_length)
-			c+=1
-			selected_lattice_lists.append(alg(lattice_list, round_num, tournament["adjudicator_list"], cp_pair))
-	
+
+	def wrap(alg):
+		def new_alg(es, selected_lattice_lists, pid, *args):
+			selected_lattice_lists[pid] = alg(pid, *args)
+			es[pid].set()
+		return new_alg
+
+	#threads = []
+	new_selected_lattice_lists = [[] for i in range(len(alg_list)*len(cp_pair_list))]
+	es = [threading.Event() for i in range(len(alg_list)*len(cp_pair_list))]
+	for i, cp_pair in enumerate(cp_pair_list):
+		for j, alg in enumerate(alg_list):
+			alg_wrapped = wrap(alg)
+			t = threading.Thread(target=alg_wrapped, args=(es, new_selected_lattice_lists, i*len(alg_list)+j, lattice_list, round_num, tournament["adjudicator_list"], cp_pair))
+			t.setDaemon(True)
+			t.start()
+			#if i == 0 and j == 0: t.start()
+
+	while True:
+		if False not in [e.isSet() for e in es]:
+			selected_lattice_lists.extend(new_selected_lattice_lists)
+			break
+		else:
+			interaction_modules.progress_bar2([e.isSet() for e in es].count(True), entire_length)
+			time.sleep(0.5)
+
 	interaction_modules.progress("")
 
 	for selected_lattice_list in selected_lattice_lists:
@@ -282,7 +302,7 @@ def create_grids_by_combinations_list(team_combinations_list):
 		for grid in related_grids:
 			grid.related_grids = related_grids
 			if True in [not(team.available) for team in grid.teams]:
-				grid.available = False
+				grid.set_not_available()
 		grid_list.extend(related_grids)
 	return grid_list
 
@@ -353,15 +373,31 @@ def filtration(grid_list, round_num, tournament, filter_lists):#max_filters = 20
 	#	filter1(grid_list, i)
 	#function_list = [power_pairing, prevent_same_institution_small, prevent_same_opponent, prevent_same_institution_middle, prevent_unfair_side, prevent_same_institution_large, random_pairing]
 	function_list = filter_lists[round_num-1]
+	all_len = len(grid_list)
+	divided_grid_list_list = [grid_list[:int(all_len/4)], grid_list[int(all_len/4):int(all_len*2/4)], grid_list[int(all_len*2/4):int(all_len*3/4)], grid_list[int(all_len*3/4):]]
+	es = [threading.Event() for i in range(4)]
 	#random.shuffle(function_list)
-	for k, function in enumerate(function_list):
-		interaction_modules.progress_bar2(k+1, len(function_list))
-		function(grid_list, round_num, tournament["team_list"], k)
-		#print str(function)#passpass
-		#show_adoptbits(team_list, grid_list, k)
-		#print
-		#show_adoptbitslong(team_list, grid_list, k)
-	interaction_modules.progress("")
+	def func_wrapper(func):
+		def func2(i, *args):
+			func(*args)
+			es[i].set()
+		return func2
+
+	for i, divided_grid_list in enumerate(divided_grid_list_list):
+		for k, function in enumerate(function_list):
+			#interaction_modules.progress_bar2(k+1, len(function_list))
+			function2 = func_wrapper(function)
+			t = threading.Thread(target=function2, args=(i, divided_grid_list, round_num, tournament["team_list"], k))
+			t.setDaemon(True)
+			t.start()
+			#print str(function)#passpass
+			#show_adoptbits(team_list, grid_list, k)
+			#print
+			#show_adoptbitslong(team_list, grid_list, k)
+		#interaction_modules.progress("")
+
+	while True:
+		if False not in [e.isSet() for e in es]:break
 
 def find_grid_from_grid_list(grid_list, teams):
 	for grid in grid_list:
@@ -441,13 +477,13 @@ def return_selected_grid_lists(grid_list, round_num, tournament, teamnum):
 		c += 1
 	interaction_modules.progress("")
 
-	entire_length = len(alg_list) * 8
+	entire_length = len(alg_list) * len(cp_pair_list)
 	c = 1
 
 	def wrap(alg):
-		def new_alg(es, selected_grid_lists, index, *args):
-			selected_grid_lists[index] = alg(*args)
-			es[index].set()
+		def new_alg(es, selected_grid_lists, pid, *args):
+			selected_grid_lists[pid] = alg(pid, *args)
+			es[pid].set()
 		return new_alg
 
 	#threads = []
@@ -458,14 +494,23 @@ def return_selected_grid_lists(grid_list, round_num, tournament, teamnum):
 			alg_wrapped = wrap(alg)
 			t = threading.Thread(target=alg_wrapped, args=(es, new_selected_grid_lists, i*len(alg_list)+j, grid_list, round_num, tournament["team_list"], cp_pair))
 			t.setDaemon(True)
-			#t.start()
-			if i == 0 and j == 0: t.start()
+			t.start()
+			#if i == 0 and j == 0: t.start()
 
+	while True:
+		if False not in [e.isSet() for e in es]:
+			selected_grid_lists.extend(new_selected_grid_lists)
+			break
+		else:
+			interaction_modules.progress_bar2([e.isSet() for e in es].count(True), entire_length)
+			time.sleep(0.5)
+	"""
 	while True:
 		#if False not in [e.isSet() for e in es]:break
 		if es[0].isSet(): break
 		time.sleep(0.1)
 	print(new_selected_grid_lists)
+	"""
 	"""
 	for cp_pair in cp_pair_list:
 		for alg in alg_list:
@@ -473,6 +518,7 @@ def return_selected_grid_lists(grid_list, round_num, tournament, teamnum):
 			c+=1
 			selected_grid_lists.append(alg(grid_list, round_num, tournament["team_list"], cp_pair))
 	"""
+	
 	interaction_modules.progress("")
 	interaction_modules.progress("deleting same matchups")
 	selected_grid_lists2 = []

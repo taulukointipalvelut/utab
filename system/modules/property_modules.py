@@ -226,11 +226,11 @@ def calc_str_str_indicator(selected_lattice_list, teamnum):
 	str_str_indicator = math.sqrt(str_str_indicator)
 	return str_str_indicator
 
-def calc_deleting_effect(grid_list, grid_deleting):
-	comparison_list_by_grid = [grid.comparison1 for grid in grid_list if (list(set(grid.teams)&set(grid_deleting.teams))) != [] and grid.available]
+def calc_deleting_effect(grid_list, grid_deleting, pid):
+	comparison_list_by_grid = [grid.comparison1 for grid in grid_list if (list(set(grid.teams)&set(grid_deleting.teams))) != [] and grid.get_available(pid)]
 	return sum(comparison_list_by_grid)-grid_deleting.comparison1
 
-def calc_deleting_effect_adj(lattice_list, lattice_deleting):
+def calc_deleting_effect_adj(lattice_list, lattice_deleting, pid):
 	comparison_list_by_lattice = [lattice.comparison1 for lattice in lattice_list if ((lattice.grid == lattice_deleting.grid or lattice.chair == lattice_deleting.chair) and not(lattice.chair.active))]
 
 	return sum(comparison_list_by_lattice)-lattice_deleting.comparison1
@@ -239,18 +239,18 @@ def min_grid_comparison1(grid_list):
 	min_grid = min(grid_list, key=lambda grid: grid.comparison1)
 	return min_grid.comparison1
 
-def len_available(listing):
+def len_available(listing, pid):
 	c = 0
 	for obj in listing:
-		if obj.available:
+		if obj.get_available(pid):
 			c += 1
 
 	return c
 
-def len_available_grids(lattice_list):
+def len_available_grids(lattice_list, pid):
 	c = 0
 	for lattice in lattice_list:
-		if lattice.available:
+		if lattice.get_available(pid):
 			c += 1
 
 	return c

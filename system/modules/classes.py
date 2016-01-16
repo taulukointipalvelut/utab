@@ -287,9 +287,24 @@ class GL:
 		self.adoptness_weight2 = 0
 		self.comparison1 = 0
 		self.comparison2 = 0
-		self.available = True
+		self.availables = [True]*49
 		self.warnings = []
 		self.large_warnings = []
+
+	def get_available(self, pid):
+		return self.availables[pid]
+
+	def set_available(self, *args):
+		if len(args) == 0:
+			self.availables = [True]*49
+		else:
+			self.availables[args[0]] = True
+
+	def set_not_available(self, *args):
+		if len(args) == 0:
+			self.availables = [False]*49
+		else:
+			self.availables[args[0]] = False
 
 	def set_adoptness1(self):
 		for k, bit in enumerate(eachbit(self.adoptbits)):
